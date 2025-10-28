@@ -1,0 +1,79 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.7'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.nutrigo'
+version = '0.0.1-SNAPSHOT'
+description = 'nutrigo-backend'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// --- Spring Core ---
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+	// --- Data / DB ---
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	runtimeOnly 'com.h2database:h2'                 // H2: 기본 실행용 (runtime에만 필요)
+	runtimeOnly 'com.mysql:mysql-connector-j'       // 이후 MySQL 전환 시 사용
+
+	// --- Cache / Redis (필요 시 활성화) ---
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// --- Security ---
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// --- OpenAPI (Swagger UI) ---
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
+
+	// --- DB Migration (Flyway) ---
+	implementation 'org.flywaydb:flyway-core'
+
+	// --- Dev / Annotation ---
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+	// --- Test ---
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+	enabled = false // 초기 세팅 단계: 테스트 비활성화
+}
+
+tasks.named('bootRun') {
+	// 루트의 .env 파일을 읽어 환경변수로 주입
+	def envFile = file('.env')
+	if (envFile.exists()) {
+		envFile.eachLine { line ->
+			if (line && !line.trim().startsWith('#') && line.contains('=')) {
+				def (k, v) = line.split('=', 2)
+				environment k.trim(), v.trim()
+			}
+		}
+	}
+}
