@@ -18,6 +18,11 @@ spring:
   flyway:
     enabled: false
 
+management:
+  endpoint:
+    health:
+      show-details: always
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION}
