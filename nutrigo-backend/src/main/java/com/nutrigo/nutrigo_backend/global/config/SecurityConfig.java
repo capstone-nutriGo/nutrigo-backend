@@ -1,4 +1,4 @@
-package com.nutrigo.nutrigo_backend.config;
+package com.nutrigo.nutrigo_backend.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
