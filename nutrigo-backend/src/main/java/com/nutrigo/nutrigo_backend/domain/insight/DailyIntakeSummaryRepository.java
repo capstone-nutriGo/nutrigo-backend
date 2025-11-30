@@ -11,5 +11,10 @@ public interface DailyIntakeSummaryRepository extends JpaRepository<DailyIntakeS
 
     Optional<DailyIntakeSummary> findByUserAndDate(User user, LocalDate date);
 
+    Optional<DailyIntakeSummary> findByDate(LocalDate date);
+
     List<DailyIntakeSummary> findAllByUserAndDateBetween(User user, LocalDate start, LocalDate end);
+
+    List<DailyIntakeSummary> findAllByDateBetween(LocalDate start, LocalDate end);
+
 }
