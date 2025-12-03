@@ -47,6 +47,7 @@ dependencies {
 
 	// --- DB Migration (Flyway) ---
 	implementation 'org.flywaydb:flyway-core'
+	implementation 'org.flywaydb:flyway-mysql'  // ⬅ 이 줄 추가
 
 	// --- Dev / Annotation ---
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'

@@ -91,3 +91,6 @@ reports/
 ### Docker ###
 /docker-data/
 /docker-compose.override.yml
+
+.DS_Store
+nutrigo-backend-clean/
