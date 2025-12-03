@@ -1,5 +1,6 @@
 package com.nutrigo.nutrigo_backend.domain.challenge;
 
+import com.nutrigo.nutrigo_backend.domain.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -48,4 +49,23 @@ public class Challenge {
     @Column(name = "category",
             columnDefinition = "ENUM('HEALTH','FUN')")
     private String category;
+
+    @Column(name = "is_custom")
+    private Boolean custom;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
+
+    @Column(name = "target_count")
+    private Integer targetCount;
+
+    @Column(name = "max_kcal_per_meal")
+    private Integer maxKcalPerMeal;
+
+    @Column(name = "max_sodium_mg_per_meal")
+    private Integer maxSodiumMgPerMeal;
+
+    @Column(name = "custom_description", columnDefinition = "TEXT")
+    private String customDescription;
 }
