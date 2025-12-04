@@ -19,6 +19,16 @@ public class MealDayController {
     private final InsightQueryService insightQueryService;
 
     @GetMapping("/day")
+    /*
+        #swagger.summary = '일별 식사 목록 조회'
+        #swagger.description = '특정 날짜에 기록된 식사(아침/점심/저녁/간식)를 조회합니다.'
+        #swagger.parameters['date'] = {
+          in: 'query',
+          required: true,
+          description: '조회할 날짜 (YYYY-MM-DD)',
+          type: 'string'
+        }
+    */
     public ResponseEntity<DayMealsResponse> getDayMeals(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
