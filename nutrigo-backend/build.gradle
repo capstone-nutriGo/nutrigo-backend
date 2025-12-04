@@ -47,6 +47,7 @@ dependencies {
 
 	// --- DB Migration (Flyway) ---
 	implementation 'org.flywaydb:flyway-core:11.18.0'
+	runtimeOnly 'org.flywaydb:flyway-mysql'
 
 	// --- Dev / Annotation ---
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
