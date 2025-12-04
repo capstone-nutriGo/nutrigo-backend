@@ -1,10 +1,9 @@
 spring:
   datasource:
-#    url: ${DB_URL}
-#    driver-class-name: ${DB_DRIVER}
-#    username: ${DB_USERNAME}
-#    password: ${DB_PASSWORD}
-
+    url: ${DB_URL}
+    driver-class-name: ${DB_DRIVER}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
