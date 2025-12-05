@@ -71,7 +71,7 @@ public class AuthService {
                 .nickname(request.nickname())
                 .name(request.name())
                 .gender(request.gender())
-                .birthday(LocalDate.parse(request.birthday()))
+                .birthday(request.birthday())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();

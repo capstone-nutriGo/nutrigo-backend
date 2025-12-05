@@ -11,6 +11,6 @@ public record InsightLogRequest(
         @NotBlank String source,
         @NotNull Long analysisId,
         @NotNull MealTime mealtime,
-        @NotNull @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX") OffsetDateTime orderedAt
+        @NotNull @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSX") OffsetDateTime orderedAt
 ) {
 }

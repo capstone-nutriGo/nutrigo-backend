@@ -16,8 +16,7 @@ public record AuthResponse(
                 new UserData(
                         user.getId(),
                         user.getEmail(),
-                        user.getNickname(),
-                        preferences != null ? preferences.getHealthMode() != null ? preferences.getHealthMode().name() : null : null
+                        user.getNickname()
                 )
         ));
     }
@@ -34,8 +33,7 @@ public record AuthResponse(
     public record UserData(
             Long userId,
             String email,
-            String nickname,
-            String mbtiType
+            String nickname
     ) {
     }
 }

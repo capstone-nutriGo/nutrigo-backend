@@ -38,7 +38,7 @@ public class UserService {
             user.setGender(request.gender());
         }
         if (request.birthday() != null) {
-            user.setBirthday(LocalDate.parse(request.birthday()));
+            user.setBirthday(request.birthday());
         }
         if (request.address() != null) {
             user.setAddress(request.address());
