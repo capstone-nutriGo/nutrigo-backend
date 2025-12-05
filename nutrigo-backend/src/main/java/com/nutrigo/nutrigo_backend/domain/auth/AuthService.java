@@ -24,8 +24,11 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseGet(() -> createUserFromRegister(request));
+        if (userRepository.existsByEmail(request.email())) {
+            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+        }
+
+        User user = createUserFromRegister(request);
         String accessToken = generateToken();
         String refreshToken = generateToken();
         return AuthResponse.from(accessToken, refreshToken, user, null);
