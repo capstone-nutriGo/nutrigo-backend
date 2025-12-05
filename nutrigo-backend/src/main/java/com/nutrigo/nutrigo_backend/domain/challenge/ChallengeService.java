@@ -112,12 +112,12 @@ public class ChallengeService {
         List<UserChallenge> enrollments = userChallengeRepository.findByUser(user);
 
         List<ChallengeProgressResponse.InProgress> inProgress = enrollments.stream()
-                .filter(uc -> "IN_PROGRESS".equalsIgnoreCase(uc.getStatus()))
+                .filter(uc -> "ongoing".equalsIgnoreCase(uc.getStatus()))
                 .map(this::toInProgress)
                 .toList();
 
         List<ChallengeProgressResponse.Completed> done = enrollments.stream()
-                .filter(uc -> "DONE".equalsIgnoreCase(uc.getStatus()))
+                .filter(uc -> "completed".equalsIgnoreCase(uc.getStatus()))
                 .map(this::toCompleted)
                 .toList();
 
@@ -140,7 +140,7 @@ public class ChallengeService {
             );
         }
 
-        boolean done = "DONE".equalsIgnoreCase(enrollment.getStatus());
+        boolean done = "completed".equalsIgnoreCase(enrollment.getStatus());
         String status = done ? "done" : "in-progress";
         Double progressValue = enrollment.getProgressRate() != null ? enrollment.getProgressRate() / 100.0 : null;
 
@@ -164,7 +164,7 @@ public class ChallengeService {
         UserChallenge enrollment = UserChallenge.builder()
                 .user(user)
                 .challenge(challenge)
-                .status("IN_PROGRESS")
+                .status("ongoing")
                 .progressRate(0)
                 .logsCount(0)
                 .startedAt(now)
