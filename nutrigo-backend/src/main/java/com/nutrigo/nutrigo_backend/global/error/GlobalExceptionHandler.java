@@ -75,6 +75,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<String>> handleValidation(Exception e) {
         String message = "Invalid request";
         String errorCode = VALIDATION_ERROR_CODE;
+
         if (e instanceof MethodArgumentNotValidException exception) {
             FieldError fieldError = extractFirstFieldError(exception.getBindingResult());
             if (fieldError != null) {
@@ -88,6 +89,7 @@ public class GlobalExceptionHandler {
                 errorCode = resolveValidationCode(fieldError.getDefaultMessage());
             }
         }
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.fail(errorCode, message));
     }
@@ -102,15 +104,17 @@ public class GlobalExceptionHandler {
                 .map(violation -> resolveValidationCode(violation.getMessage()))
                 .findFirst()
                 .orElse(CONSTRAINT_VIOLATION_CODE);
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.fail(errorCode, message));
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class})
     public ResponseEntity<ApiResponse<String>> handleMalformedRequest(Exception e) {
-        String message = e instanceof MissingServletRequestParameterException missing
+        String message = (e instanceof MissingServletRequestParameterException missing)
                 ? "Missing request parameter: " + missing.getParameterName()
                 : "Malformed request payload";
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.fail(MALFORMED_REQUEST_CODE, message));
     }
@@ -123,6 +127,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiResponse<String>> handleConflict(IllegalStateException e) {
+        // feature/user-api 브랜치에서 가져온 "Authorization 관련 에러는 401" 로직을 ApiResponse로 녹여 넣기
+        if (e.getMessage() != null &&
+                (e.getMessage().contains("Authorization")
+                        || e.getMessage().contains("missing")
+                        || e.getMessage().contains("invalid"))) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.fail(CONFLICT_ERROR_CODE, "Unauthorized: " + e.getMessage()));
+        }
+
+        // 그 외 IllegalStateException은 409 CONFLICT
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.fail(CONFLICT_ERROR_CODE, e.getMessage()));
     }
