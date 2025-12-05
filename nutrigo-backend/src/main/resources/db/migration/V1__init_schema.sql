@@ -47,22 +47,6 @@ CREATE TABLE `analysis_item` (
                                  PRIMARY KEY (`analysis_item_id`)
 );
 
-CREATE TABLE `analysis_session` (
-                                    `analysis_id`	BIGINT	NOT NULL AUTO_INCREMENT,
-                                    `type`	ENUM('link','cart')	NOT NULL,
-                                    `raw_input_type`	ENUM('url','image')	NOT NULL,
-                                    `raw_input_value`	TEXT	NOT NULL,
-                                    `total_kcal`	FLOAT	NULL,
-                                    `total_sodium_mg`	FLOAT	NULL,
-                                    `total_score`	FLOAT	NULL,
-                                    `created_at`	DATETIME	NOT NULL,
-                                    `user_id`	BIGINT	NOT NULL,
-                                    `session_purpose`	ENUM('PRE_ORDER','RECORD')	NULL,
-                                    `meal_time`	ENUM('BREAKFAST','LUNCH','DINNER','SNACK')	NULL,
-                                    `meal_date`	DATE	NULL,
-                                    PRIMARY KEY (`analysis_id`)
-);
-
 CREATE TABLE `alternative_suggestion` (
                                           `alternative_suggestion_id`	BIGINT	NOT NULL AUTO_INCREMENT,
                                           `reason`	VARCHAR(255)	NULL,
