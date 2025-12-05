@@ -4,11 +4,11 @@ import com.nutrigo.nutrigo_backend.domain.user.dto.UserProfileResponse;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserProfileUpdateRequest;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserSettingsRequest;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserSettingsResponse;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.User.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
@@ -96,7 +96,7 @@ public class UserService {
         return userRepository.findAll()
                 .stream()
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No users available"));
+                .orElseThrow(UserNotFoundException::new);
     }
 
     public User getCurrentUser(String authorization) {

@@ -1,6 +1,7 @@
 package com.nutrigo.nutrigo_backend.domain.insight;
 
 import com.nutrigo.nutrigo_backend.domain.insight.dto.*;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Insight.InvalidReportRangeException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -152,6 +153,10 @@ public class InsightQueryService {
     }
 
     private InsightReportResponse.ReportRange parseRange(String value) {
-        return InsightReportResponse.ReportRange.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        try {
+            return InsightReportResponse.ReportRange.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new InvalidReportRangeException(value);
+        }
     }
 }

@@ -7,6 +7,8 @@ import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeProgressRespons
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.JoinChallengeResponse;
 import com.nutrigo.nutrigo_backend.domain.user.User;
 import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Challenge.ChallengeNotFoundException;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.User.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,7 +95,7 @@ public class ChallengeService {
     public JoinChallengeResponse joinChallenge(Long challengeId) {
         User user = getCurrentUser();
         Challenge challenge = challengeRepository.findById(challengeId)
-                .orElseThrow(() -> new IllegalArgumentException("Challenge not found"));
+                .orElseThrow(ChallengeNotFoundException::new);
 
         UserChallenge userChallenge = userChallengeRepository.findByUserAndChallengeId(user, challengeId)
                 .orElseGet(() -> createEnrollment(user, challenge));
@@ -112,12 +114,12 @@ public class ChallengeService {
         List<UserChallenge> enrollments = userChallengeRepository.findByUser(user);
 
         List<ChallengeProgressResponse.InProgress> inProgress = enrollments.stream()
-                .filter(uc -> "IN_PROGRESS".equalsIgnoreCase(uc.getStatus()))
+                .filter(uc -> "ongoing".equalsIgnoreCase(uc.getStatus()))
                 .map(this::toInProgress)
                 .toList();
 
         List<ChallengeProgressResponse.Completed> done = enrollments.stream()
-                .filter(uc -> "DONE".equalsIgnoreCase(uc.getStatus()))
+                .filter(uc -> "completed".equalsIgnoreCase(uc.getStatus()))
                 .map(this::toCompleted)
                 .toList();
 
@@ -140,7 +142,7 @@ public class ChallengeService {
             );
         }
 
-        boolean done = "DONE".equalsIgnoreCase(enrollment.getStatus());
+        boolean done = "completed".equalsIgnoreCase(enrollment.getStatus());
         String status = done ? "done" : "in-progress";
         Double progressValue = enrollment.getProgressRate() != null ? enrollment.getProgressRate() / 100.0 : null;
 
@@ -164,7 +166,7 @@ public class ChallengeService {
         UserChallenge enrollment = UserChallenge.builder()
                 .user(user)
                 .challenge(challenge)
-                .status("IN_PROGRESS")
+                .status("ongoing")
                 .progressRate(0)
                 .logsCount(0)
                 .startedAt(now)
@@ -209,6 +211,6 @@ public class ChallengeService {
         return userRepository.findAll()
                 .stream()
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No users available"));
+                .orElseThrow(UserNotFoundException::new);
     }
 }

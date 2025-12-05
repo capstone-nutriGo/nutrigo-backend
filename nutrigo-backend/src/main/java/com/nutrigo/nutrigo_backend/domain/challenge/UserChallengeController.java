@@ -2,6 +2,7 @@ package com.nutrigo.nutrigo_backend.domain.challenge;
 
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeCreateRequest;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeCreateResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,7 +19,7 @@ public class UserChallengeController {
 
     @PostMapping
     public ResponseEntity<ChallengeCreateResponse> createCustomChallenge(
-            @RequestBody ChallengeCreateRequest request
+            @Valid @RequestBody ChallengeCreateRequest request
     ) {
         return ResponseEntity.ok(challengeService.createCustomChallenge(request));
     }

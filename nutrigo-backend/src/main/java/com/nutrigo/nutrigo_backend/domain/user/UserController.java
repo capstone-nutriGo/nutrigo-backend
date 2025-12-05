@@ -4,6 +4,7 @@ import com.nutrigo.nutrigo_backend.domain.user.dto.UserProfileResponse;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserProfileUpdateRequest;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserSettingsRequest;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserSettingsResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,15 +29,17 @@ public class UserController {
 
     @PutMapping("/profile")
     public ResponseEntity<UserProfileResponse> updateProfile(
-            @RequestBody UserProfileUpdateRequest request,
-            @RequestHeader(value = "Authorization", required = false) String authorization) {
+            @Valid @RequestBody UserProfileUpdateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
         return ResponseEntity.ok(userService.updateProfile(request, authorization));
     }
 
     @PutMapping("/settings")
     public ResponseEntity<UserSettingsResponse> updateSettings(
-            @RequestBody UserSettingsRequest request,
-            @RequestHeader(value = "Authorization", required = false) String authorization) {
+            @Valid @RequestBody UserSettingsRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
         return ResponseEntity.ok(userService.updateSettings(request, authorization));
     }
 }
