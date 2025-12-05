@@ -4,6 +4,7 @@ import com.nutrigo.nutrigo_backend.domain.user.dto.UserProfileResponse;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserProfileUpdateRequest;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserSettingsRequest;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserSettingsResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,12 +26,12 @@ public class UserController {
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<UserProfileResponse> updateProfile(@RequestBody UserProfileUpdateRequest request) {
+    public ResponseEntity<UserProfileResponse> updateProfile(@Valid @RequestBody UserProfileUpdateRequest request) {
         return ResponseEntity.ok(userService.updateProfile(request));
     }
 
     @PutMapping("/settings")
-    public ResponseEntity<UserSettingsResponse> updateSettings(@RequestBody UserSettingsRequest request) {
+    public ResponseEntity<UserSettingsResponse> updateSettings(@Valid @RequestBody UserSettingsRequest request) {
         return ResponseEntity.ok(userService.updateSettings(request));
     }
 }
