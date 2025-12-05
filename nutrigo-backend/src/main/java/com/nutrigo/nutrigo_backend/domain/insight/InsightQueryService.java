@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.DoubleSummaryStatistics;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,15 +25,11 @@ public class InsightQueryService {
 
         List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByDateBetween(startDate, endDate);
 
-        int totalMeals = summaries.stream()
-                .map(DailyIntakeSummary::getTotalMeals)
-                .filter(value -> value != null && value > 0)
-                .mapToInt(Integer::intValue)
-                .sum();
+        int totalMeals = mealLogRepository.findAllByMealDateBetween(startDate, endDate).size();
 
-        long goodDays = summaries.stream().filter(summary -> Boolean.TRUE.equals(summary.getGoodDay())).count();
-        long overeatDays = summaries.stream().filter(summary -> Boolean.TRUE.equals(summary.getOvereatDay())).count();
-        long lowSodiumDays = summaries.stream().filter(summary -> Boolean.TRUE.equals(summary.getLowSodiumDay())).count();
+        long goodDays = summaries.stream().filter(summary -> "green".equalsIgnoreCase(summary.getDayColor())).count();
+        long overeatDays = summaries.stream().filter(summary -> "red".equalsIgnoreCase(summary.getDayColor())).count();
+        long lowSodiumDays = summaries.stream().filter(summary -> "yellow".equalsIgnoreCase(summary.getDayColor())).count();
 
         DoubleSummaryStatistics scoreStats = summaries.stream()
                 .map(DailyIntakeSummary::getDayScore)
@@ -72,7 +67,7 @@ public class InsightQueryService {
 
         List<InsightCalendarResponse.Day> days = summaries.stream()
                 .map(this::toCalendarDay)
-                .collect(Collectors.toList());
+                .toList();
 
         InsightCalendarResponse.Data data = new InsightCalendarResponse.Data(
                 startDate,
@@ -86,25 +81,22 @@ public class InsightQueryService {
     public DayMealsResponse getDayMeals(LocalDate date) {
         DailyIntakeSummary summary = dailyIntakeSummaryRepository.findByDate(date).orElse(null);
 
-        OffsetDateTime start = date.atStartOfDay().atOffset(ZoneOffset.UTC);
-        OffsetDateTime end = date.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC).minusNanos(1);
-
-        List<MealLog> mealLogs = mealLogRepository.findAllByOrderedAtBetween(start, end);
+        List<MealLog> mealLogs = mealLogRepository.findAllByMealDate(date);
         List<DayMealsResponse.Meal> meals = mealLogs.stream()
                 .map(mealLog -> new DayMealsResponse.Meal(
                         mealLog.getId(),
-                        mealLog.getSource(),
                         mealLog.getMealTime(),
-                        mealLog.getOrderedAt()
+                        mealLog.getMealDate(),
+                        mealLog.getCreatedAt()
                 ))
-                .collect(Collectors.toList());
+                .toList();
 
         DayMealsResponse.Data data = new DayMealsResponse.Data(
                 date,
                 summary != null ? summary.getTotalKcal() : null,
                 summary != null ? summary.getTotalSodiumMg() : null,
                 summary != null ? summary.getTotalProteinG() : null,
-                summary != null ? summary.getTotalMeals() : meals.size(),
+                meals.size(),
                 meals
         );
 
@@ -127,20 +119,18 @@ public class InsightQueryService {
 
     private InsightCalendarResponse.Day toCalendarDay(DailyIntakeSummary summary) {
         List<String> tags = new ArrayList<>();
-        if (Boolean.TRUE.equals(summary.getLowSodiumDay())) {
-            tags.add("저염 성공");
-        }
-        if (Boolean.TRUE.equals(summary.getOvereatDay())) {
+        if ("red".equalsIgnoreCase(summary.getDayColor())) {
             tags.add("과식 폭주");
-        }
-        if (Boolean.TRUE.equals(summary.getGoodDay())) {
+        } else if ("yellow".equalsIgnoreCase(summary.getDayColor())) {
+            tags.add("주의 필요");
+        } else if ("green".equalsIgnoreCase(summary.getDayColor())) {
             tags.add("좋은 습관 유지");
         }
 
         DayHighlight highlight = DayHighlight.NEUTRAL;
-        if (Boolean.TRUE.equals(summary.getOvereatDay())) {
+        if ("red".equalsIgnoreCase(summary.getDayColor())) {
             highlight = DayHighlight.BAD;
-        } else if (Boolean.TRUE.equals(summary.getGoodDay()) || Boolean.TRUE.equals(summary.getLowSodiumDay())) {
+        } else if ("green".equalsIgnoreCase(summary.getDayColor())) {
             highlight = DayHighlight.GOOD;
         }
 

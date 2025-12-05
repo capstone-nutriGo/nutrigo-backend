@@ -33,7 +33,6 @@ public class ChallengeService {
     public ChallengeCreateResponse createCustomChallenge(ChallengeCreateRequest request) {
         User user = getCurrentUser();
         LocalDateTime now = LocalDateTime.now();
-        ChallengeCreateRequest.Goal goal = request.goal();
 
         Challenge challenge = Challenge.builder()
                 .code(generateCustomCode(user))
@@ -43,13 +42,7 @@ public class ChallengeService {
                 .durationDays(request.durationDays())
                 .createdAt(now)
                 .status("ACTIVE")
-                .category(request.category())
-                .custom(true)
                 .createdBy(user)
-                .targetCount(goal != null ? goal.targetCount() : null)
-                .maxKcalPerMeal(goal != null ? goal.maxKcalPerMeal() : null)
-                .maxSodiumMgPerMeal(goal != null ? goal.maxSodiumMgPerMeal() : null)
-                .customDescription(goal != null ? goal.customDescription() : null)
                 .build();
 
         Challenge saved = challengeRepository.save(challenge);
@@ -59,18 +52,11 @@ public class ChallengeService {
                 saved.getId(),
                 saved.getTitle(),
                 saved.getDescription(),
-                saved.getCategory().name(),
                 saved.getType().name(),
                 saved.getDurationDays(),
                 "in-progress",
                 enrollment.getStartedAt(),
-                enrollment.getEndedAt(),
-                new ChallengeCreateResponse.Goal(
-                        saved.getTargetCount(),
-                        saved.getMaxKcalPerMeal(),
-                        saved.getMaxSodiumMgPerMeal(),
-                        saved.getCustomDescription()
-                )
+                enrollment.getEndedAt()
         ));
     }
 
@@ -132,7 +118,6 @@ public class ChallengeService {
                     challenge.getId(),
                     challenge.getTitle(),
                     challenge.getDescription(),
-                    challenge.getCategory().name(),
                     challenge.getType().name(),
                     challenge.getDurationDays(),
                     "available",
@@ -150,7 +135,6 @@ public class ChallengeService {
                 challenge.getId(),
                 challenge.getTitle(),
                 challenge.getDescription(),
-                challenge.getCategory().name(),
                 challenge.getType().name(),
                 challenge.getDurationDays(),
                 status,
@@ -162,15 +146,14 @@ public class ChallengeService {
 
     private UserChallenge createEnrollment(User user, Challenge challenge) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime end = now.plusDays(challenge.getDurationDays() != null ? challenge.getDurationDays() : 0);
-        UserChallenge enrollment = UserChallenge.builder()
+        LocalDate startDate = now.toLocalDate();
+        LocalDate endDate = startDate.plusDays(challenge.getDurationDays() != null ? challenge.getDurationDays() : 0);        UserChallenge enrollment = UserChallenge.builder()
                 .user(user)
                 .challenge(challenge)
                 .status("ongoing")
-                .progressRate(0)
-                .logsCount(0)
-                .startedAt(now)
-                .endedAt(end)
+                .progressRate(0f)
+                .startedAt(startDate)
+                .endedAt(endDate)
                 .build();
         return userChallengeRepository.save(enrollment);
     }
@@ -179,15 +162,14 @@ public class ChallengeService {
         LocalDate today = LocalDate.now();
         int remainingDays = 0;
         if (enrollment.getEndedAt() != null) {
-            remainingDays = (int) Math.max(0, ChronoUnit.DAYS.between(today, enrollment.getEndedAt().toLocalDate()));
+            remainingDays = (int) Math.max(0, ChronoUnit.DAYS.between(today, enrollment.getEndedAt()));
         }
         return new ChallengeProgressResponse.InProgress(
                 enrollment.getChallenge().getId(),
                 enrollment.getChallenge().getTitle(),
-                enrollment.getChallenge().getCategory().name(),
                 enrollment.getChallenge().getType().name(),
-                enrollment.getProgressRate() != null ? enrollment.getProgressRate() : 0,
-                enrollment.getLogsCount() != null ? enrollment.getLogsCount() : 0,
+                enrollment.getProgressRate() != null ? enrollment.getProgressRate().intValue() : 0,
+                0,
                 remainingDays
         );
     }
@@ -196,7 +178,6 @@ public class ChallengeService {
         return new ChallengeProgressResponse.Completed(
                 enrollment.getChallenge().getId(),
                 enrollment.getChallenge().getTitle(),
-                enrollment.getChallenge().getCategory().name(),
                 enrollment.getChallenge().getType().name(),
                 enrollment.getFinishedAt()
         );

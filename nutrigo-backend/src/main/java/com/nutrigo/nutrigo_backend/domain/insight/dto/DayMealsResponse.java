@@ -3,6 +3,7 @@ package com.nutrigo.nutrigo_backend.domain.insight.dto;
 import com.nutrigo.nutrigo_backend.global.common.enums.MealTime;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -22,9 +23,8 @@ public record DayMealsResponse(
 
     public record Meal(
             Long mealLogId,
-            String source,
             MealTime mealTime,
-            OffsetDateTime orderedAt
-    ) {
+            LocalDate mealDate,
+            LocalDateTime createdAt    ) {
     }
 }

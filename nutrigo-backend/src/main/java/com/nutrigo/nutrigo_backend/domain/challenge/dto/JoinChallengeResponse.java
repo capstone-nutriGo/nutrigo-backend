@@ -1,5 +1,6 @@
 package com.nutrigo.nutrigo_backend.domain.challenge.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record JoinChallengeResponse(
@@ -9,8 +10,8 @@ public record JoinChallengeResponse(
     public record Data(
             Long challengeId,
             String status,
-            LocalDateTime startedAt,
-            LocalDateTime endedAt
+            LocalDate startedAt,
+            LocalDate endedAt
     ) {
     }
 }

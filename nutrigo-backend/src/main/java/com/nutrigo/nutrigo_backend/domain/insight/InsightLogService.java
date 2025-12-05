@@ -3,6 +3,7 @@ package com.nutrigo.nutrigo_backend.domain.insight;
 import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogRequest;
 import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogResponse;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Insight.AnalysisSessionNotFoundException;
+import com.nutrigo.nutrigo_backend.global.common.enums.MealTime;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,24 +24,22 @@ public class InsightLogService {
     public InsightLogResponse logInsight(InsightLogRequest request) {
         AnalysisSession analysisSession = analysisSessionRepository.findById(request.analysisId())
                 .orElseThrow(() -> new AnalysisSessionNotFoundException(request.analysisId()));
+        DailyIntakeSummary summary = upsertDailyIntakeSummary(analysisSession, request.mealtime(), request.orderedAt());
 
         MealLog mealLog = MealLog.builder()
-                .analysisSession(analysisSession)
-                .source(request.source())
                 .mealTime(request.mealtime())
-                .orderedAt(request.orderedAt())
+                .mealDate(request.orderedAt().toLocalDate())
                 .createdAt(LocalDateTime.now())
+                .dailyIntakeSummary(summary)
                 .build();
 
         MealLog saved = mealLogRepository.save(mealLog);
-
-        upsertDailyIntakeSummary(analysisSession, request.orderedAt());
 
         InsightLogResponse.Data data = new InsightLogResponse.Data(saved.getId(), Collections.emptyList());
         return new InsightLogResponse(true, data);
     }
 
-    private void upsertDailyIntakeSummary(AnalysisSession analysisSession, OffsetDateTime orderedAt) {
+    private DailyIntakeSummary upsertDailyIntakeSummary(AnalysisSession analysisSession, MealTime mealTime, OffsetDateTime orderedAt) {
         LocalDateTime now = LocalDateTime.now();
         DailyIntakeSummary summary = dailyIntakeSummaryRepository
                 .findByUserAndDate(analysisSession.getUser(), orderedAt.toLocalDate())
@@ -48,14 +47,11 @@ public class InsightLogService {
                         .user(analysisSession.getUser())
                         .date(orderedAt.toLocalDate())
                         .createdAt(now)
-                        .totalKcal(0f)
-                        .totalSodiumMg(0f)
-                        .totalProteinG(0f)
-                        .totalMeals(0)
+                        .updatedAt(now)
+                        .dayColor("green")
                         .build());
 
-        int previousMeals = summary.getTotalMeals() != null ? summary.getTotalMeals() : 0;
-        summary.setTotalMeals(previousMeals + 1);
+        long previousMeals = mealLogRepository.countByDailyIntakeSummary(summary);
 
         Float existingKcal = summary.getTotalKcal() != null ? summary.getTotalKcal() : 0f;
         if (analysisSession.getTotalKcal() != null) {
@@ -76,6 +72,15 @@ public class InsightLogService {
             summary.setDayScore(newScore);
         }
 
-        dailyIntakeSummaryRepository.save(summary);
-    }
+        Integer snacks = summary.getTotalSnack() != null ? summary.getTotalSnack() : 0;
+        Integer nights = summary.getTotalNight() != null ? summary.getTotalNight() : 0;
+        if (mealTime == MealTime.SNACK) {
+            summary.setTotalSnack(snacks + 1);
+        } else if (mealTime == MealTime.NIGHT) {
+            summary.setTotalNight(nights + 1);
+        }
+
+        summary.setUpdatedAt(now);
+
+        return dailyIntakeSummaryRepository.save(summary);    }
 }

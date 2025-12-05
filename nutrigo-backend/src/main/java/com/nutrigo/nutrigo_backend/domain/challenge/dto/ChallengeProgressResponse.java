@@ -16,7 +16,6 @@ public record ChallengeProgressResponse(
     public record InProgress(
             Long challengeId,
             String title,
-            String category,
             String type,
             Integer progressRate,
             Integer logsCount,
@@ -27,7 +26,6 @@ public record ChallengeProgressResponse(
     public record Completed(
             Long challengeId,
             String title,
-            String category,
             String type,
             LocalDateTime finishedAt
     ) {

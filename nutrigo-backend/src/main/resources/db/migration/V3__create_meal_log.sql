@@ -48,9 +48,6 @@ ALTER TABLE `user_challenge`
     MODIFY COLUMN `started_at`	DATETIME	NOT NULL,
     MODIFY COLUMN `ended_at`	DATETIME	NULL,
     MODIFY COLUMN `finished_at`	DATETIME	NULL,
-    ADD COLUMN `progress_rate`
-        INT NOT NULL
-        AFTER `progress_value`,
     ADD COLUMN `logs_count`
         INT NOT NULL
         AFTER `progress_rate`;

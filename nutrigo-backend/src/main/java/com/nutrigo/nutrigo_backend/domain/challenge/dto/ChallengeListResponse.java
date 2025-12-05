@@ -1,5 +1,6 @@
 package com.nutrigo.nutrigo_backend.domain.challenge.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -14,13 +15,12 @@ public record ChallengeListResponse(
             Long challengeId,
             String title,
             String description,
-            String category,
             String type,
             Integer durationDays,
             String status,
             Double progressValue,
-            LocalDateTime startedAt,
-            LocalDateTime endedAt
+            LocalDate startedAt,
+            LocalDate endedAt
     ) {
     }
 }
