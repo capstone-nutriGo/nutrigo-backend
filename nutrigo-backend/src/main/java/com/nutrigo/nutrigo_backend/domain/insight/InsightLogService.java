@@ -2,7 +2,7 @@ package com.nutrigo.nutrigo_backend.domain.insight;
 
 import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogRequest;
 import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogResponse;
-import com.nutrigo.nutrigo_backend.global.error.ResourceNotFoundException;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Insight.AnalysisSessionNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,7 +22,7 @@ public class InsightLogService {
     @Transactional
     public InsightLogResponse logInsight(InsightLogRequest request) {
         AnalysisSession analysisSession = analysisSessionRepository.findById(request.analysisId())
-                .orElseThrow(() -> new ResourceNotFoundException("Analysis session not found: " + request.analysisId()));
+                .orElseThrow(() -> new AnalysisSessionNotFoundException(request.analysisId()));
 
         MealLog mealLog = MealLog.builder()
                 .analysisSession(analysisSession)

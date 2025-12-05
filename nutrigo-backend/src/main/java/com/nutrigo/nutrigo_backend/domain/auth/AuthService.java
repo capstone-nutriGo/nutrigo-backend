@@ -6,13 +6,15 @@ import com.nutrigo.nutrigo_backend.domain.auth.dto.LogoutRequest;
 import com.nutrigo.nutrigo_backend.domain.auth.dto.RefreshRequest;
 import com.nutrigo.nutrigo_backend.domain.auth.dto.RegisterRequest;
 import com.nutrigo.nutrigo_backend.domain.auth.dto.SocialLoginRequest;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Auth.DuplicateEmailException;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Auth.InvalidCredentialsException;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Auth.UserNotFoundException;
 import com.nutrigo.nutrigo_backend.domain.user.User;
 import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -25,7 +27,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+            throw new DuplicateEmailException();
         }
 
         User user = createUserFromRegister(request);
@@ -37,8 +39,11 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
-                .filter(existing -> existing.getPassword() != null && existing.getPassword().equals(request.password()))
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+                .orElseThrow(UserNotFoundException::new);
+
+        if (user.getPassword() == null || !user.getPassword().equals(request.password())) {
+            throw new InvalidCredentialsException();
+        }
         String accessToken = generateToken();
         String refreshToken = generateToken();
         return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences());

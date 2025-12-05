@@ -7,7 +7,8 @@ import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeProgressRespons
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.JoinChallengeResponse;
 import com.nutrigo.nutrigo_backend.domain.user.User;
 import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
-import com.nutrigo.nutrigo_backend.global.error.ResourceNotFoundException;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Challenge.ChallengeNotFoundException;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.User.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,7 +95,7 @@ public class ChallengeService {
     public JoinChallengeResponse joinChallenge(Long challengeId) {
         User user = getCurrentUser();
         Challenge challenge = challengeRepository.findById(challengeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Challenge not found"));
+                .orElseThrow(ChallengeNotFoundException::new);
 
         UserChallenge userChallenge = userChallengeRepository.findByUserAndChallengeId(user, challengeId)
                 .orElseGet(() -> createEnrollment(user, challenge));
@@ -210,6 +211,6 @@ public class ChallengeService {
         return userRepository.findAll()
                 .stream()
                 .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(UserNotFoundException::new);
     }
 }
