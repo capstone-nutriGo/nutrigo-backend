@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,17 +21,22 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/profile")
-    public ResponseEntity<UserProfileResponse> getProfile() {
-        return ResponseEntity.ok(userService.getProfile());
+    public ResponseEntity<UserProfileResponse> getProfile(
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        return ResponseEntity.ok(userService.getProfile(authorization));
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<UserProfileResponse> updateProfile(@RequestBody UserProfileUpdateRequest request) {
-        return ResponseEntity.ok(userService.updateProfile(request));
+    public ResponseEntity<UserProfileResponse> updateProfile(
+            @RequestBody UserProfileUpdateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        return ResponseEntity.ok(userService.updateProfile(request, authorization));
     }
 
     @PutMapping("/settings")
-    public ResponseEntity<UserSettingsResponse> updateSettings(@RequestBody UserSettingsRequest request) {
-        return ResponseEntity.ok(userService.updateSettings(request));
+    public ResponseEntity<UserSettingsResponse> updateSettings(
+            @RequestBody UserSettingsRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        return ResponseEntity.ok(userService.updateSettings(request, authorization));
     }
 }

@@ -19,14 +19,14 @@ public class UserService {
     private final UserPreferencesRepository userPreferencesRepository;
 
     @Transactional(readOnly = true)
-    public UserProfileResponse getProfile() {
-        User user = getCurrentUser();
+    public UserProfileResponse getProfile(String authorization) {
+        User user = getCurrentUser(authorization);
         return UserProfileResponse.from(user);
     }
 
     @Transactional
-    public UserProfileResponse updateProfile(UserProfileUpdateRequest request) {
-        User user = getCurrentUser();
+    public UserProfileResponse updateProfile(UserProfileUpdateRequest request, String authorization) {
+        User user = getCurrentUser(authorization);
 
         if (request.nickname() != null) {
             user.setNickname(request.nickname());
@@ -63,8 +63,8 @@ public class UserService {
     }
 
     @Transactional
-    public UserSettingsResponse updateSettings(UserSettingsRequest request) {
-        User user = getCurrentUser();
+    public UserSettingsResponse updateSettings(UserSettingsRequest request, String authorization) {
+        User user = getCurrentUser(authorization);
         UserPreferences preferences = ensurePreferences(user);
 
         if (request.notification() != null) {
@@ -96,6 +96,36 @@ public class UserService {
         return userRepository.findAll()
                 .stream()
                 .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No users available"));
+    }
+
+    public User getCurrentUser(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new IllegalStateException("Authorization header is missing or invalid");
+        }
+
+        String token = authorization.substring(7); // "Bearer " 제거
+        Long userId = extractUserIdFromToken(token);
+
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found with id: " + userId));
+    }
+
+    private Long extractUserIdFromToken(String token) {
+        // 토큰 형식: "userId:uuid" (예: "1:a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        if (token.contains(":")) {
+            String userIdStr = token.split(":")[0];
+            try {
+                return Long.parseLong(userIdStr);
+            } catch (NumberFormatException e) {
+                throw new IllegalStateException("Invalid token format");
+            }
+        }
+        // 기존 형식의 토큰인 경우 (UUID만 있는 경우) - 첫 번째 사용자 반환 (하위 호환성)
+        return userRepository.findAll()
+                .stream()
+                .findFirst()
+                .map(User::getId)
                 .orElseThrow(() -> new IllegalStateException("No users available"));
     }
 

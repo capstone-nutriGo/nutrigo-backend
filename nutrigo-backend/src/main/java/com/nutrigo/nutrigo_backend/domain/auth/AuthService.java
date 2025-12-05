@@ -26,8 +26,8 @@ public class AuthService {
     public AuthResponse register(RegisterRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseGet(() -> createUserFromRegister(request));
-        String accessToken = generateToken();
-        String refreshToken = generateToken();
+        String accessToken = generateToken(user.getId());
+        String refreshToken = generateToken(user.getId());
         return AuthResponse.from(accessToken, refreshToken, user, null);
     }
 
@@ -36,8 +36,8 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
                 .filter(existing -> existing.getPassword() != null && existing.getPassword().equals(request.password()))
                 .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
-        String accessToken = generateToken();
-        String refreshToken = generateToken();
+        String accessToken = generateToken(user.getId());
+        String refreshToken = generateToken(user.getId());
         return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences());
     }
 
@@ -48,9 +48,27 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse refresh(RefreshRequest request) {
-        String accessToken = generateToken();
-        String refreshToken = generateToken();
-        return new AuthResponse(true, new AuthResponse.TokenData(accessToken, refreshToken, "Bearer", 3600, null));
+        // refresh 토큰에서 사용자 ID 추출
+        Long userId = extractUserIdFromToken(request.refreshToken());
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+
+        String accessToken = generateToken(userId);
+        String refreshToken = generateToken(userId);
+        return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences());
+    }
+
+    private Long extractUserIdFromToken(String token) {
+        // 토큰 형식: "userId:uuid" (예: "1:a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        if (token != null && token.contains(":")) {
+            String userIdStr = token.split(":")[0];
+            try {
+                return Long.parseLong(userIdStr);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid token format");
+            }
+        }
+        throw new IllegalArgumentException("Invalid token format");
     }
 
     @Transactional
@@ -58,8 +76,8 @@ public class AuthService {
         String email = request.provider().name().toLowerCase() + "_user@" + request.provider().name().toLowerCase() + ".com";
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> createSocialUser(email, request.provider().name() + "유저"));
-        String accessToken = generateToken();
-        String refreshToken = generateToken();
+        String accessToken = generateToken(user.getId());
+        String refreshToken = generateToken(user.getId());
         return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences());
     }
 
@@ -82,7 +100,7 @@ public class AuthService {
         LocalDateTime now = LocalDateTime.now();
         User user = User.builder()
                 .email(email)
-                .password(generateToken())
+                .password(UUID.randomUUID().toString()) // password는 UUID만 사용
                 .nickname(nickname)
                 .createdAt(now)
                 .updatedAt(now)
@@ -90,7 +108,13 @@ public class AuthService {
         return userRepository.save(user);
     }
 
+    private String generateToken(Long userId) {
+        // 토큰 형식: userId:uuid (예: "1:a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        return userId + ":" + UUID.randomUUID().toString();
+    }
+
     private String generateToken() {
+        // refresh용 (사용자 ID 없이)
         return UUID.randomUUID().toString();
     }
 }
