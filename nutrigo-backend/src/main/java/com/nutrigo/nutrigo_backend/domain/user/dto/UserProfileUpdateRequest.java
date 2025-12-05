@@ -4,11 +4,13 @@ import com.nutrigo.nutrigo_backend.global.common.enums.DefaultMode;
 import com.nutrigo.nutrigo_backend.global.common.enums.Gender;
 import com.nutrigo.nutrigo_backend.global.common.enums.HealthMode;
 
+import java.time.LocalDate;
+
 public record UserProfileUpdateRequest(
         String nickname,
         String name,
         Gender gender,
-        String birthday,
+        LocalDate birthday,
         String address,
         Preferences preferences
 ) {
