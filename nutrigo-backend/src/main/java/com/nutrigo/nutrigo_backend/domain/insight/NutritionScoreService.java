@@ -1,6 +1,6 @@
 package com.nutrigo.nutrigo_backend.domain.insight;
 
-import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogRequest;
+import com.nutrigo.nutrigo_backend.domain.insight.dto.NutrientProfile;
 import com.nutrigo.nutrigo_backend.domain.user.User;
 import com.nutrigo.nutrigo_backend.global.common.enums.Gender;
 import org.springframework.stereotype.Component;
@@ -37,29 +37,29 @@ public class NutritionScoreService {
         ));
     }
 
-    public Float calculateMealScore(User user, InsightLogRequest request) {
+    public Float calculateMealScore(User user, NutrientProfile nutrientProfile) {
         ReferenceIntake intake = resolveReference(user);
-        if (intake == null) {
+        if (intake == null || nutrientProfile == null) {
             return null;
         }
 
         float mealScoreSum = 0f;
         int metrics = 0;
 
-        if (request.kcal() != null) {
-            mealScoreSum += scoreAgainstTarget(request.kcal(), intake.dailyKcal() / 3f);
+        if (nutrientProfile.kcal() != null) {
+            mealScoreSum += scoreAgainstTarget(nutrientProfile.kcal(), intake.dailyKcal() / 3f);
             metrics++;
         }
-        if (request.proteinG() != null) {
-            mealScoreSum += scoreAgainstTarget(request.proteinG(), intake.dailyProtein() / 3f);
+        if (nutrientProfile.proteinG() != null) {
+            mealScoreSum += scoreAgainstTarget(nutrientProfile.proteinG(), intake.dailyProtein() / 3f);
             metrics++;
         }
-        if (request.carbG() != null) {
-            mealScoreSum += scoreAgainstTarget(request.carbG(), intake.dailyCarb() / 3f);
+        if (nutrientProfile.carbG() != null) {
+            mealScoreSum += scoreAgainstTarget(nutrientProfile.carbG(), intake.dailyCarb() / 3f);
             metrics++;
         }
-        if (request.sodiumMg() != null) {
-            mealScoreSum += scoreAgainstTarget(request.sodiumMg(), intake.dailySodium() / 3f);
+        if (nutrientProfile.sodiumMg() != null) {
+            mealScoreSum += scoreAgainstTarget(nutrientProfile.sodiumMg(), intake.dailySodium() / 3f);
             metrics++;
         }
 

@@ -2,6 +2,8 @@ package com.nutrigo.nutrigo_backend.domain.insight;
 
 import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogRequest;
 import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogResponse;
+import com.nutrigo.nutrigo_backend.domain.insight.dto.MealAnalysisResult;
+import com.nutrigo.nutrigo_backend.domain.insight.dto.NutrientProfile;
 import com.nutrigo.nutrigo_backend.domain.user.User;
 import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
 import com.nutrigo.nutrigo_backend.global.common.enums.MealTime;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -22,21 +25,32 @@ public class InsightLogService {
     private final UserRepository userRepository;
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
     private final NutritionScoreService nutritionScoreService;
+    private final MealAnalysisClient mealAnalysisClient;
 
     @Transactional
     public InsightLogResponse logInsight(InsightLogRequest request) {
         User user = getCurrentUser();
-        Float mealScore = nutritionScoreService.calculateMealScore(user, request);
-        DailyIntakeSummary summary = upsertDailyIntakeSummary(user, request, mealScore);
+
+        MealAnalysisResult analysisResult = mealAnalysisClient.analyze(request);
+        NutrientProfile nutrientProfile = Optional.ofNullable(analysisResult)
+                .map(MealAnalysisResult::nutrientProfile)
+                .orElse(null);
+
+        Float mealScore = nutritionScoreService.calculateMealScore(user, nutrientProfile);
+        Float totalScore = analysisResult != null && analysisResult.totalScore() != null
+                ? analysisResult.totalScore()
+                : mealScore;
+
+        DailyIntakeSummary summary = upsertDailyIntakeSummary(user, request, nutrientProfile, mealScore);
 
         MealLog mealLog = MealLog.builder()
-                .menu(request.menu())
-                .category(request.category())
-                .kcal(request.kcal())
-                .sodiumMg(request.sodiumMg())
-                .proteinG(request.proteinG())
-                .carbG(request.carbG())
-                .totalScore(request.totalScore())
+                .menu(analysisResult != null && analysisResult.menu() != null ? analysisResult.menu() : request.menu())
+                .category(analysisResult != null ? analysisResult.category() : null)
+                .kcal(nutrientProfile != null ? nutrientProfile.kcal() : null)
+                .sodiumMg(nutrientProfile != null ? nutrientProfile.sodiumMg() : null)
+                .proteinG(nutrientProfile != null ? nutrientProfile.proteinG() : null)
+                .carbG(nutrientProfile != null ? nutrientProfile.carbG() : null)
+                .totalScore(totalScore)
                 .mealTime(request.mealtime())
                 .mealDate(request.mealDate())
                 .createdAt(LocalDateTime.now())
@@ -49,7 +63,7 @@ public class InsightLogService {
         return new InsightLogResponse(true, data);
     }
 
-    private DailyIntakeSummary upsertDailyIntakeSummary(User user, InsightLogRequest request, Float mealScore) {
+    private DailyIntakeSummary upsertDailyIntakeSummary(User user, InsightLogRequest request, NutrientProfile nutrientProfile, Float mealScore) {
         LocalDate mealDate = request.mealDate();
         LocalDateTime now = LocalDateTime.now();
         DailyIntakeSummary summary = dailyIntakeSummaryRepository
@@ -69,23 +83,23 @@ public class InsightLogService {
         long previousMeals = isNewSummary ? 0 : mealLogRepository.countByDailyIntakeSummary(summary);
 
         Float existingKcal = summary.getTotalKcal() != null ? summary.getTotalKcal() : 0f;
-        if (request.kcal() != null) {
-            summary.setTotalKcal(existingKcal + request.kcal());
+        if (nutrientProfile != null && nutrientProfile.kcal() != null) {
+            summary.setTotalKcal(existingKcal + nutrientProfile.kcal());
         }
 
         Float existingSodium = summary.getTotalSodiumMg() != null ? summary.getTotalSodiumMg() : 0f;
-        if (request.sodiumMg() != null) {
-            summary.setTotalSodiumMg(existingSodium + request.sodiumMg());
+        if (nutrientProfile != null && nutrientProfile.sodiumMg() != null) {
+            summary.setTotalSodiumMg(existingSodium + nutrientProfile.sodiumMg());
         }
 
         Float existingProtein = summary.getTotalProteinG() != null ? summary.getTotalProteinG() : 0f;
-        if (request.proteinG() != null) {
-            summary.setTotalProteinG(existingProtein + request.proteinG());
+        if (nutrientProfile != null && nutrientProfile.proteinG() != null) {
+            summary.setTotalProteinG(existingProtein + nutrientProfile.proteinG());
         }
 
         Float existingCarb = summary.getTotalCarbG() != null ? summary.getTotalCarbG() : 0f;
-        if (request.carbG() != null) {
-            summary.setTotalCarbG(existingCarb + request.carbG());
+        if (nutrientProfile != null && nutrientProfile.carbG() != null) {
+            summary.setTotalCarbG(existingCarb + nutrientProfile.carbG());
         }
 
         if (mealScore != null) {

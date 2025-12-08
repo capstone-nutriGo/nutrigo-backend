@@ -11,9 +11,6 @@ public record InsightLogRequest(
         @Schema(description = "식사한 메뉴명", example = "치킨 샐러드")
         String menu,
 
-        @Schema(description = "식사 카테고리", example = "샐러드")
-        String category,
-
         @Schema(description = "분석에 사용할 음식 이미지 주소", example = "https://example.com/images/meal.jpg")
         String foodImageUrl,
 
@@ -21,22 +18,8 @@ public record InsightLogRequest(
         String foodDescription,
 
         @Schema(description = "식사량(인분 단위)", example = "0.8")
+        @NotNull(message = "식사량을 입력해주세요")
         Float serving,
-
-        @Schema(description = "식사 칼로리", example = "520")
-        Float kcal,
-
-        @Schema(description = "식사 나트륨(mg)", example = "800")
-        Float sodiumMg,
-
-        @Schema(description = "식사 단백질(g)", example = "35")
-        Float proteinG,
-
-        @Schema(description = "식사 탄수화물(g)", example = "40")
-        Float carbG,
-
-        @Schema(description = "식사 종합 점수", example = "82.5")
-        Float totalScore,
 
         @NotNull(message = "식사 종류를 선택해주세요")
         MealTime mealtime,
