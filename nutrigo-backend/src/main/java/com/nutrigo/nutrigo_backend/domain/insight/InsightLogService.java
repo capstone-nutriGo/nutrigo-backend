@@ -29,6 +29,7 @@ public class InsightLogService {
 
         MealLog mealLog = MealLog.builder()
                 .menu(request.menu())
+                .category(request.category())
                 .kcal(request.kcal())
                 .sodiumMg(request.sodiumMg())
                 .proteinG(request.proteinG())

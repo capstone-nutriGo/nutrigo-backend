@@ -10,6 +10,9 @@ import java.util.ArrayList;
 import java.util.DoubleSummaryStatistics;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +20,77 @@ public class InsightQueryService {
 
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
     private final MealLogRepository mealLogRepository;
+
+    public WeeklyInsightSummaryResponse getWeeklySummary(LocalDate baseDate) {
+        LocalDate weekStart = baseDate.with(DayOfWeek.MONDAY);
+        LocalDate weekEnd = baseDate.with(DayOfWeek.SUNDAY);
+
+        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByDateBetween(weekStart, weekEnd);
+        List<MealLog> mealLogs = mealLogRepository.findAllByMealDateBetween(weekStart, weekEnd);
+
+        int totalMeals = mealLogs.size();
+
+        long goodDays = summaries.stream().filter(summary -> "green".equalsIgnoreCase(summary.getDayColor())).count();
+        long overeatDays = summaries.stream().filter(summary -> "red".equalsIgnoreCase(summary.getDayColor())).count();
+        long lowSodiumDays = summaries.stream().filter(summary -> "yellow".equalsIgnoreCase(summary.getDayColor())).count();
+
+        DoubleSummaryStatistics scoreStats = summaries.stream()
+                .map(DailyIntakeSummary::getDayScore)
+                .filter(score -> score != null)
+                .mapToDouble(Float::doubleValue)
+                .summaryStatistics();
+
+        double totalKcal = summaries.stream()
+                .map(DailyIntakeSummary::getTotalKcal)
+                .filter(kcal -> kcal != null)
+                .mapToDouble(Float::doubleValue)
+                .sum();
+
+        List<WeeklyInsightSummaryResponse.TrendDay> trendDays = summaries.stream()
+                .sorted(Comparator.comparing(DailyIntakeSummary::getDate))
+                .map(summary -> new WeeklyInsightSummaryResponse.TrendDay(
+                        summary.getDate(),
+                        summary.getDayScore(),
+                        summary.getDayColor(),
+                        summary.getTotalKcal(),
+                        summary.getTotalCarbG(),
+                        summary.getTotalProteinG(),
+                        summary.getTotalSodiumMg()
+                ))
+                .toList();
+
+        List<WeeklyInsightSummaryResponse.CategoryStat> categoryTop3 = mealLogs.stream()
+                .map(MealLog::getCategory)
+                .map(category -> (category == null || category.isBlank()) ? "UNCATEGORIZED" : category)
+                .collect(Collectors.groupingBy(category -> category, Collectors.counting()))
+                .entrySet()
+                .stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(3)
+                .map(entry -> new WeeklyInsightSummaryResponse.CategoryStat(entry.getKey(), entry.getValue()))
+                .toList();
+
+        WeeklyInsightSummaryResponse.Summary summary = new WeeklyInsightSummaryResponse.Summary(
+                totalMeals,
+                (int) goodDays,
+                (int) overeatDays,
+                (int) lowSodiumDays,
+                scoreStats.getCount() > 0 ? scoreStats.getAverage() : 0.0,
+                totalMeals > 0 ? totalKcal / totalMeals : 0.0
+        );
+
+        WeeklyInsightSummaryResponse.Trends trends = new WeeklyInsightSummaryResponse.Trends(trendDays);
+
+        WeeklyInsightSummaryResponse.Data data = new WeeklyInsightSummaryResponse.Data(
+                weekStart,
+                weekEnd,
+                summary,
+                trends,
+                categoryTop3
+        );
+
+        return new WeeklyInsightSummaryResponse(true, data);
+    }
 
     public InsightReportResponse getReport(String range, LocalDate baseDate) {
         InsightReportResponse.ReportRange reportRange = parseRange(range);
@@ -86,6 +160,7 @@ public class InsightQueryService {
                 .map(mealLog -> new DayMealsResponse.Meal(
                         mealLog.getId(),
                         mealLog.getMenu(),
+                        mealLog.getCategory(),
                         mealLog.getMealTime(),
                         mealLog.getMealDate(),
                         mealLog.getCreatedAt(),

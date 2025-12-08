@@ -11,6 +11,9 @@ public record InsightLogRequest(
         @Schema(description = "식사한 메뉴명", example = "치킨 샐러드")
         String menu,
 
+        @Schema(description = "식사 카테고리", example = "샐러드")
+        String category,
+
         @Schema(description = "분석에 사용할 음식 이미지 주소", example = "https://example.com/images/meal.jpg")
         String foodImageUrl,
 

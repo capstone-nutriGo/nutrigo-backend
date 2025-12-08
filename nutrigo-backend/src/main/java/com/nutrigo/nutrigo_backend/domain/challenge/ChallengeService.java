@@ -6,6 +6,7 @@ import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeListResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeProgressResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeQuitResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.JoinChallengeResponse;
+import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeProgressDetailResponse;
 import com.nutrigo.nutrigo_backend.domain.insight.DailyIntakeSummary;
 import com.nutrigo.nutrigo_backend.domain.insight.DailyIntakeSummaryRepository;
 import com.nutrigo.nutrigo_backend.domain.user.User;
@@ -136,6 +137,45 @@ public class ChallengeService {
                 .toList();
 
         return new ChallengeProgressResponse(true, new ChallengeProgressResponse.Data(inProgress, done));
+    }
+
+    @Transactional(readOnly = true)
+    public ChallengeProgressDetailResponse getChallengeProgress(Long challengeId) {
+        User user = getCurrentUser();
+        UserChallenge enrollment = userChallengeRepository.findByUserAndChallengeId(user, challengeId)
+                .orElseThrow(ChallengeNotFoundException::new);
+
+        LocalDate today = LocalDate.now();
+        List<DailyIntakeSummary> summaries = loadDailyIntakes(enrollment, today);
+        int progressRate = calculateProgressRate(enrollment, summaries, today);
+        int remainingDays = 0;
+        if ("ongoing".equalsIgnoreCase(enrollment.getStatus()) && enrollment.getEndedAt() != null) {
+            remainingDays = (int) Math.max(0, ChronoUnit.DAYS.between(today, enrollment.getEndedAt()));
+        }
+
+        String status = enrollment.getStatus();
+        if (status == null || status.isBlank()) {
+            status = "inactive";
+        }
+
+        Integer totalDays = enrollment.getChallenge().getDurationDays();
+        int completedDays = summaries.size();
+
+        return new ChallengeProgressDetailResponse(true, new ChallengeProgressDetailResponse.Data(
+                enrollment.getChallenge().getId(),
+                enrollment.getChallenge().getTitle(),
+                enrollment.getChallenge().getDescription(),
+                enrollment.getChallenge().getType().name(),
+                status.toLowerCase(),
+                progressRate,
+                remainingDays,
+                totalDays,
+                completedDays,
+                enrollment.getStartedAt(),
+                enrollment.getEndedAt(),
+                enrollment.getFinishedAt(),
+                summaries.stream().map(this::toDailyIntake).toList()
+        ));
     }
 
     private ChallengeListResponse.ChallengeSummary toChallengeSummary(Challenge challenge, UserChallenge enrollment) {

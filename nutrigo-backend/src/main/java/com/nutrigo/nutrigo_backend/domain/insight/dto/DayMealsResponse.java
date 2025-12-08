@@ -28,6 +28,7 @@ public record DayMealsResponse(
     public record Meal(
             Long mealLogId,
             String menu,
+            String category,
             MealTime mealTime,
             LocalDate mealDate,
             LocalDateTime createdAt,

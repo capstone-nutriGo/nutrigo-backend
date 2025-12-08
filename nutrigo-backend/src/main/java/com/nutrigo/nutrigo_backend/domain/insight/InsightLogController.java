@@ -46,4 +46,12 @@ public class InsightLogController {
         InsightCalendarResponse response = insightQueryService.getCalendar(startDate, endDate);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/weekly-summary")
+    public ResponseEntity<WeeklyInsightSummaryResponse> getWeeklySummary(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
+    ) {
+        WeeklyInsightSummaryResponse response = insightQueryService.getWeeklySummary(baseDate);
+        return ResponseEntity.ok(response);
+    }
 }

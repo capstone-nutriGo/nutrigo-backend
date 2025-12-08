@@ -25,6 +25,9 @@ public class MealLog {
     @Column(name = "menu", length = 50)
     private String menu;
 
+    @Column(name = "category", length = 50)
+    private String category;
+
     @Column(name = "kcal")
     private Float kcal;
 

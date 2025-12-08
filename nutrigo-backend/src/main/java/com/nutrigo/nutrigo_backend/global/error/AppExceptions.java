@@ -56,15 +56,9 @@ public final class AppExceptions {
         private Insight() {
         }
 
-        public static class AnalysisSessionNotFoundException extends AppException {
-            public AnalysisSessionNotFoundException(Long analysisSessionId) {
-                super("INSIGHT_001", "Analysis session not found: " + analysisSessionId, HttpStatus.NOT_FOUND);
-            }
-        }
-
         public static class InvalidReportRangeException extends AppException {
             public InvalidReportRangeException(String range) {
-                super("INSIGHT_002", "Invalid report range: " + range, HttpStatus.BAD_REQUEST);
+                super("INSIGHT_001", "Invalid report range: " + range, HttpStatus.BAD_REQUEST);
             }
         }
     }

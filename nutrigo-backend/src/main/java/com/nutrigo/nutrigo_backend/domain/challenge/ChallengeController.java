@@ -4,6 +4,7 @@ import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeListResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeProgressResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeQuitResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.JoinChallengeResponse;
+import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeProgressDetailResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,5 +39,10 @@ public class ChallengeController {
     @GetMapping("/progress")
     public ResponseEntity<ChallengeProgressResponse> getProgress() {
         return ResponseEntity.ok(challengeService.getProgress());
+    }
+
+    @GetMapping("/{challengeId}/progress")
+    public ResponseEntity<ChallengeProgressDetailResponse> getChallengeProgress(@PathVariable Long challengeId) {
+        return ResponseEntity.ok(challengeService.getChallengeProgress(challengeId));
     }
 }
