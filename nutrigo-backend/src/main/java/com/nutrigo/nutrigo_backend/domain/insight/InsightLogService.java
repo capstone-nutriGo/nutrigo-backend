@@ -21,11 +21,13 @@ public class InsightLogService {
     private final MealLogRepository mealLogRepository;
     private final UserRepository userRepository;
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
+    private final NutritionScoreService nutritionScoreService;
 
     @Transactional
     public InsightLogResponse logInsight(InsightLogRequest request) {
         User user = getCurrentUser();
-        DailyIntakeSummary summary = upsertDailyIntakeSummary(user, request);
+        Float mealScore = nutritionScoreService.calculateMealScore(user, request);
+        DailyIntakeSummary summary = upsertDailyIntakeSummary(user, request, mealScore);
 
         MealLog mealLog = MealLog.builder()
                 .menu(request.menu())
@@ -47,7 +49,7 @@ public class InsightLogService {
         return new InsightLogResponse(true, data);
     }
 
-    private DailyIntakeSummary upsertDailyIntakeSummary(User user, InsightLogRequest request) {
+    private DailyIntakeSummary upsertDailyIntakeSummary(User user, InsightLogRequest request, Float mealScore) {
         LocalDate mealDate = request.mealDate();
         LocalDateTime now = LocalDateTime.now();
         DailyIntakeSummary summary = dailyIntakeSummaryRepository
@@ -86,13 +88,13 @@ public class InsightLogService {
             summary.setTotalCarbG(existingCarb + request.carbG());
         }
 
-        Float mealScore = request.totalScore();
         if (mealScore != null) {
             Float existingScore = summary.getDayScore() != null ? summary.getDayScore() : 0f;
             float newScore = previousMeals > 0
                     ? (existingScore * previousMeals + mealScore) / (previousMeals + 1)
                     : mealScore;
             summary.setDayScore(newScore);
+            summary.setDayColor(nutritionScoreService.resolveDayColor(newScore));
         }
 
         Integer snacks = summary.getTotalSnack() != null ? summary.getTotalSnack() : 0;
