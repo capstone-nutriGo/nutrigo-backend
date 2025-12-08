@@ -4,7 +4,10 @@ import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeCreateRequest;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeCreateResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeListResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeProgressResponse;
+import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeQuitResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.JoinChallengeResponse;
+import com.nutrigo.nutrigo_backend.domain.insight.DailyIntakeSummary;
+import com.nutrigo.nutrigo_backend.domain.insight.DailyIntakeSummaryRepository;
 import com.nutrigo.nutrigo_backend.domain.user.User;
 import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Challenge.ChallengeNotFoundException;
@@ -28,6 +31,7 @@ public class ChallengeService {
     private final ChallengeRepository challengeRepository;
     private final UserChallengeRepository userChallengeRepository;
     private final UserRepository userRepository;
+    private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
 
     @Transactional
     public ChallengeCreateResponse createCustomChallenge(ChallengeCreateRequest request) {
@@ -54,7 +58,7 @@ public class ChallengeService {
                 saved.getDescription(),
                 saved.getType().name(),
                 saved.getDurationDays(),
-                "in-progress",
+                enrollment.getStatus(),
                 enrollment.getStartedAt(),
                 enrollment.getEndedAt()
         ));
@@ -88,9 +92,31 @@ public class ChallengeService {
 
         return new JoinChallengeResponse(true, new JoinChallengeResponse.Data(
                 challenge.getId(),
-                "on_going",
+                userChallenge.getStatus(),
                 userChallenge.getStartedAt(),
                 userChallenge.getEndedAt()
+        ));
+    }
+
+    @Transactional
+    public ChallengeQuitResponse quitChallenge(Long challengeId) {
+        User user = getCurrentUser();
+        UserChallenge enrollment = userChallengeRepository.findByUserAndChallengeId(user, challengeId)
+                .orElseThrow(ChallengeNotFoundException::new);
+
+        if ("ongoing".equalsIgnoreCase(enrollment.getStatus())) {
+            LocalDate today = LocalDate.now();
+            List<DailyIntakeSummary> summaries = loadDailyIntakes(enrollment, today);
+            enrollment.setProgressRate((float) calculateProgressRate(enrollment, summaries, today));
+            enrollment.setStatus("failed");
+            enrollment.setFinishedAt(LocalDateTime.now());
+            userChallengeRepository.save(enrollment);
+        }
+
+        return new ChallengeQuitResponse(true, new ChallengeQuitResponse.Data(
+                enrollment.getChallenge().getId(),
+                enrollment.getStatus(),
+                enrollment.getFinishedAt()
         ));
     }
 
@@ -120,15 +146,16 @@ public class ChallengeService {
                     challenge.getDescription(),
                     challenge.getType().name(),
                     challenge.getDurationDays(),
-                    "available",
+                    normalizeChallengeStatus(challenge.getStatus()),
                     null,
                     null,
                     null
             );
         }
 
+        boolean failed = "failed".equalsIgnoreCase(enrollment.getStatus());
         boolean done = "completed".equalsIgnoreCase(enrollment.getStatus());
-        String status = done ? "done" : "in-progress";
+        String status = failed ? "failed" : (done ? "completed" : "ongoing");
         Double progressValue = enrollment.getProgressRate() != null ? enrollment.getProgressRate() / 100.0 : null;
 
         return new ChallengeListResponse.ChallengeSummary(
@@ -147,7 +174,8 @@ public class ChallengeService {
     private UserChallenge createEnrollment(User user, Challenge challenge) {
         LocalDateTime now = LocalDateTime.now();
         LocalDate startDate = now.toLocalDate();
-        LocalDate endDate = startDate.plusDays(challenge.getDurationDays() != null ? challenge.getDurationDays() : 0);        UserChallenge enrollment = UserChallenge.builder()
+        LocalDate endDate = startDate.plusDays(challenge.getDurationDays() != null ? challenge.getDurationDays() : 0);
+        UserChallenge enrollment = UserChallenge.builder()
                 .user(user)
                 .challenge(challenge)
                 .status("ongoing")
@@ -164,13 +192,57 @@ public class ChallengeService {
         if (enrollment.getEndedAt() != null) {
             remainingDays = (int) Math.max(0, ChronoUnit.DAYS.between(today, enrollment.getEndedAt()));
         }
+        List<DailyIntakeSummary> summaries = loadDailyIntakes(enrollment, today);
+        int progressRate = calculateProgressRate(enrollment, summaries, today);
         return new ChallengeProgressResponse.InProgress(
                 enrollment.getChallenge().getId(),
                 enrollment.getChallenge().getTitle(),
                 enrollment.getChallenge().getType().name(),
-                enrollment.getProgressRate() != null ? enrollment.getProgressRate().intValue() : 0,
-                0,
-                remainingDays
+                progressRate,
+                remainingDays,
+                summaries.stream()
+                        .map(this::toDailyIntake)
+                        .toList()
+        );
+    }
+
+    private List<DailyIntakeSummary> loadDailyIntakes(UserChallenge enrollment, LocalDate today) {
+        LocalDate startDate = enrollment.getStartedAt() != null ? enrollment.getStartedAt() : today;
+        LocalDate endDate = enrollment.getEndedAt() != null ? enrollment.getEndedAt() : today;
+        LocalDate upperBound = endDate.isBefore(today) ? endDate : today;
+        return dailyIntakeSummaryRepository.findAllByUserAndDateBetween(
+                enrollment.getUser(),
+                startDate,
+                upperBound
+        );
+    }
+
+    private int calculateProgressRate(UserChallenge enrollment, List<DailyIntakeSummary> summaries, LocalDate today) {
+        Integer durationDays = enrollment.getChallenge().getDurationDays();
+        if (durationDays == null || durationDays <= 0) {
+            return enrollment.getProgressRate() != null ? enrollment.getProgressRate().intValue() : 0;
+        }
+        LocalDate startDate = enrollment.getStartedAt() != null ? enrollment.getStartedAt() : today;
+        long elapsedDays = ChronoUnit.DAYS.between(startDate, today) + 1;
+        long targetDays = Math.min(elapsedDays, durationDays);
+        if (targetDays <= 0) {
+            return 0;
+        }
+        float completionRatio = (float) Math.min(summaries.size(), targetDays) / (float) durationDays;
+        return Math.round(completionRatio * 100);
+    }
+
+    private ChallengeProgressResponse.DailyIntake toDailyIntake(DailyIntakeSummary summary) {
+        return new ChallengeProgressResponse.DailyIntake(
+                summary.getDate(),
+                summary.getTotalKcal(),
+                summary.getTotalSodiumMg(),
+                summary.getTotalProteinG(),
+                summary.getTotalCarbG(),
+                summary.getTotalSnack(),
+                summary.getTotalNight(),
+                summary.getDayScore(),
+                summary.getDayColor()
         );
     }
 
@@ -186,6 +258,19 @@ public class ChallengeService {
     private String generateCustomCode(User user) {
         String userKey = user.getId() != null ? user.getId().toString() : "user";
         return "CUSTOM-" + userKey + "-" + System.currentTimeMillis();
+    }
+
+    private String normalizeChallengeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "inactive";
+        }
+        if ("ACTIVE".equalsIgnoreCase(status)) {
+            return "active";
+        }
+        if ("INACTIVE".equalsIgnoreCase(status)) {
+            return "inactive";
+        }
+        return status.toLowerCase();
     }
 
     private User getCurrentUser() {

@@ -2,14 +2,16 @@ package com.nutrigo.nutrigo_backend.domain.insight;
 
 import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogRequest;
 import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogResponse;
-import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Insight.AnalysisSessionNotFoundException;
+import com.nutrigo.nutrigo_backend.domain.user.User;
+import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
 import com.nutrigo.nutrigo_backend.global.common.enums.MealTime;
+import com.nutrigo.nutrigo_backend.global.error.AppExceptions.User.UserNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.Collections;
 
 @Service
@@ -17,18 +19,23 @@ import java.util.Collections;
 public class InsightLogService {
 
     private final MealLogRepository mealLogRepository;
-    private final AnalysisSessionRepository analysisSessionRepository;
+    private final UserRepository userRepository;
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
 
     @Transactional
     public InsightLogResponse logInsight(InsightLogRequest request) {
-        AnalysisSession analysisSession = analysisSessionRepository.findById(request.analysisId())
-                .orElseThrow(() -> new AnalysisSessionNotFoundException(request.analysisId()));
-        DailyIntakeSummary summary = upsertDailyIntakeSummary(analysisSession, request.mealtime(), request.orderedAt());
+        User user = getCurrentUser();
+        DailyIntakeSummary summary = upsertDailyIntakeSummary(user, request);
 
         MealLog mealLog = MealLog.builder()
+                .menu(request.menu())
+                .kcal(request.kcal())
+                .sodiumMg(request.sodiumMg())
+                .proteinG(request.proteinG())
+                .carbG(request.carbG())
+                .totalScore(request.totalScore())
                 .mealTime(request.mealtime())
-                .mealDate(request.orderedAt().toLocalDate())
+                .mealDate(request.mealDate())
                 .createdAt(LocalDateTime.now())
                 .dailyIntakeSummary(summary)
                 .build();
@@ -39,48 +46,71 @@ public class InsightLogService {
         return new InsightLogResponse(true, data);
     }
 
-    private DailyIntakeSummary upsertDailyIntakeSummary(AnalysisSession analysisSession, MealTime mealTime, OffsetDateTime orderedAt) {
+    private DailyIntakeSummary upsertDailyIntakeSummary(User user, InsightLogRequest request) {
+        LocalDate mealDate = request.mealDate();
         LocalDateTime now = LocalDateTime.now();
         DailyIntakeSummary summary = dailyIntakeSummaryRepository
-                .findByUserAndDate(analysisSession.getUser(), orderedAt.toLocalDate())
-                .orElseGet(() -> DailyIntakeSummary.builder()
-                        .user(analysisSession.getUser())
-                        .date(orderedAt.toLocalDate())
-                        .createdAt(now)
-                        .updatedAt(now)
-                        .dayColor("green")
-                        .build());
+                .findByUserAndDate(user, mealDate)
+                .orElse(null);
 
-        long previousMeals = mealLogRepository.countByDailyIntakeSummary(summary);
+        boolean isNewSummary = summary == null;
+        if (isNewSummary) {
+            summary = DailyIntakeSummary.builder()
+                    .user(user)
+                    .date(mealDate)
+                    .createdAt(now)
+                    .dayColor("green")
+                    .build();
+        }
+
+        long previousMeals = isNewSummary ? 0 : mealLogRepository.countByDailyIntakeSummary(summary);
 
         Float existingKcal = summary.getTotalKcal() != null ? summary.getTotalKcal() : 0f;
-        if (analysisSession.getTotalKcal() != null) {
-            summary.setTotalKcal(existingKcal + analysisSession.getTotalKcal());
+        if (request.kcal() != null) {
+            summary.setTotalKcal(existingKcal + request.kcal());
         }
 
         Float existingSodium = summary.getTotalSodiumMg() != null ? summary.getTotalSodiumMg() : 0f;
-        if (analysisSession.getTotalSodiumMg() != null) {
-            summary.setTotalSodiumMg(existingSodium + analysisSession.getTotalSodiumMg());
+        if (request.sodiumMg() != null) {
+            summary.setTotalSodiumMg(existingSodium + request.sodiumMg());
         }
 
-        Float sessionScore = analysisSession.getTotalScore();
-        if (sessionScore != null) {
+        Float existingProtein = summary.getTotalProteinG() != null ? summary.getTotalProteinG() : 0f;
+        if (request.proteinG() != null) {
+            summary.setTotalProteinG(existingProtein + request.proteinG());
+        }
+
+        Float existingCarb = summary.getTotalCarbG() != null ? summary.getTotalCarbG() : 0f;
+        if (request.carbG() != null) {
+            summary.setTotalCarbG(existingCarb + request.carbG());
+        }
+
+        Float mealScore = request.totalScore();
+        if (mealScore != null) {
             Float existingScore = summary.getDayScore() != null ? summary.getDayScore() : 0f;
             float newScore = previousMeals > 0
-                    ? (existingScore * previousMeals + sessionScore) / (previousMeals + 1)
-                    : sessionScore;
+                    ? (existingScore * previousMeals + mealScore) / (previousMeals + 1)
+                    : mealScore;
             summary.setDayScore(newScore);
         }
 
         Integer snacks = summary.getTotalSnack() != null ? summary.getTotalSnack() : 0;
         Integer nights = summary.getTotalNight() != null ? summary.getTotalNight() : 0;
-        if (mealTime == MealTime.SNACK) {
+        if (request.mealtime() == MealTime.SNACK) {
             summary.setTotalSnack(snacks + 1);
-        } else if (mealTime == MealTime.NIGHT) {
+        } else if (request.mealtime() == MealTime.NIGHT) {
             summary.setTotalNight(nights + 1);
         }
 
         summary.setUpdatedAt(now);
 
-        return dailyIntakeSummaryRepository.save(summary);    }
+        return dailyIntakeSummaryRepository.save(summary);
+    }
+
+    private User getCurrentUser() {
+        return userRepository.findAll()
+                .stream()
+                .findFirst()
+                .orElseThrow(UserNotFoundException::new);
+    }
 }

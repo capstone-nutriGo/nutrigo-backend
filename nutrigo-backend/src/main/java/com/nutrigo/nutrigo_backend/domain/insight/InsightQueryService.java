@@ -85,9 +85,15 @@ public class InsightQueryService {
         List<DayMealsResponse.Meal> meals = mealLogs.stream()
                 .map(mealLog -> new DayMealsResponse.Meal(
                         mealLog.getId(),
+                        mealLog.getMenu(),
                         mealLog.getMealTime(),
                         mealLog.getMealDate(),
-                        mealLog.getCreatedAt()
+                        mealLog.getCreatedAt(),
+                        mealLog.getKcal(),
+                        mealLog.getSodiumMg(),
+                        mealLog.getProteinG(),
+                        mealLog.getCarbG(),
+                        mealLog.getTotalScore()
                 ))
                 .toList();
 
@@ -96,7 +102,12 @@ public class InsightQueryService {
                 summary != null ? summary.getTotalKcal() : null,
                 summary != null ? summary.getTotalSodiumMg() : null,
                 summary != null ? summary.getTotalProteinG() : null,
+                summary != null ? summary.getTotalCarbG() : null,
                 meals.size(),
+                summary != null ? summary.getTotalSnack() : null,
+                summary != null ? summary.getTotalNight() : null,
+                summary != null ? summary.getDayScore() : null,
+                summary != null ? summary.getDayColor() : null,
                 meals
         );
 

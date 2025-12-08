@@ -2,6 +2,7 @@ package com.nutrigo.nutrigo_backend.domain.challenge;
 
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeListResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeProgressResponse;
+import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeQuitResponse;
 import com.nutrigo.nutrigo_backend.domain.challenge.dto.JoinChallengeResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,11 @@ public class ChallengeController {
     @PostMapping("/{challengeId}/join")
     public ResponseEntity<JoinChallengeResponse> joinChallenge(@PathVariable Long challengeId) {
         return ResponseEntity.ok(challengeService.joinChallenge(challengeId));
+    }
+
+    @PostMapping("/{challengeId}/quit")
+    public ResponseEntity<ChallengeQuitResponse> quitChallenge(@PathVariable Long challengeId) {
+        return ResponseEntity.ok(challengeService.quitChallenge(challengeId));
     }
 
     @GetMapping("/progress")

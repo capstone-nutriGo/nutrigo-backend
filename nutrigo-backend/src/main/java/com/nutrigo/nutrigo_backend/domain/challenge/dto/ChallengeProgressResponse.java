@@ -18,8 +18,21 @@ public record ChallengeProgressResponse(
             String title,
             String type,
             Integer progressRate,
-            Integer logsCount,
-            Integer remainingDays
+            Integer remainingDays,
+            List<DailyIntake> dailyIntakes
+    ) {
+    }
+
+    public record DailyIntake(
+            java.time.LocalDate date,
+            Float totalKcal,
+            Float totalSodiumMg,
+            Float totalProteinG,
+            Float totalCarbG,
+            Integer totalSnack,
+            Integer totalNight,
+            Float dayScore,
+            String dayColor
     ) {
     }
 

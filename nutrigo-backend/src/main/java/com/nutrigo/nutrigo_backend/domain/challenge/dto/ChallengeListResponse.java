@@ -1,7 +1,6 @@
 package com.nutrigo.nutrigo_backend.domain.challenge.dto;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 public record ChallengeListResponse(
