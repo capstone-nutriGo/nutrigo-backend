@@ -142,7 +142,7 @@ CREATE TABLE `user_challenge` (
                                   `ended_at`	DATE	NULL,
                                   `finished_at`	DATE	NULL,
                                   `status`	ENUM('ongoing','completed','failed')	NOT NULL	DEFAULT 'ongoing',
-                                  `progress_value`	FLOAT	NULL,
+                                  `progress_rate` FLOAT NULL,
                                   `user_id`	BIGINT	NOT NULL,
                                   `challenge_id`	BIGINT	NOT NULL,
                                   PRIMARY KEY (`user_challenge_id`)

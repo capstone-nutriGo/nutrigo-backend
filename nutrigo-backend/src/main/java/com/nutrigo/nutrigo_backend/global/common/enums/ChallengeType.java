@@ -1,5 +1,5 @@
 package com.nutrigo.nutrigo_backend.global.common.enums;
 
 public enum ChallengeType {
-    kcal, sodium, frequency, day_color, delivery_count, custom
+    kcal, sodium, protein, frequency, day_color
 }

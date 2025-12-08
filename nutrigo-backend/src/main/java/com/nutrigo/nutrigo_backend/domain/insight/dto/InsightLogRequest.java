@@ -3,17 +3,29 @@ package com.nutrigo.nutrigo_backend.domain.insight.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.nutrigo.nutrigo_backend.global.common.enums.MealTime;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDate;
 
 public record InsightLogRequest(
-        @NotBlank String source,
+        @Schema(description = "식사한 메뉴명", example = "치킨 샐러드")
+        String menu,
 
-        @Schema(description = "Analysis Session ID", example = "1")
-        @NotNull Long analysisId,
-        @NotNull MealTime mealtime,
-        @NotNull @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSX") OffsetDateTime orderedAt
+        @Schema(description = "분석에 사용할 음식 이미지 주소", example = "https://example.com/images/meal.jpg")
+        String foodImageUrl,
+
+        @Schema(description = "분석에 사용할 음식 텍스트 정보", example = "현미밥 한 공기와 닭가슴살 150g")
+        String foodDescription,
+
+        @Schema(description = "식사량(인분 단위)", example = "0.8")
+        @NotNull(message = "식사량을 입력해주세요")
+        Float serving,
+
+        @NotNull(message = "식사 종류를 선택해주세요")
+        MealTime mealtime,
+
+        @NotNull(message = "식사 날짜를 선택해주세요")
+        @JsonFormat(pattern = "yyyy-MM-dd")
+        LocalDate mealDate
 ) {
 }

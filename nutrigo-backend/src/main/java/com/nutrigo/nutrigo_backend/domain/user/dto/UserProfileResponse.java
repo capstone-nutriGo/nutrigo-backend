@@ -1,7 +1,7 @@
 package com.nutrigo.nutrigo_backend.domain.user.dto;
 
 import com.nutrigo.nutrigo_backend.domain.user.User;
-import com.nutrigo.nutrigo_backend.domain.user.UserPreferences;
+import com.nutrigo.nutrigo_backend.domain.user.UserSetting;
 
 import java.time.LocalDate;
 
@@ -10,7 +10,7 @@ public record UserProfileResponse(
         Data data
 ) {
     public static UserProfileResponse from(User user) {
-        UserPreferences prefs = user.getPreferences();
+        UserSetting prefs = user.getPreferences();
         return new UserProfileResponse(true, new Data(
                 user.getId(),
                 user.getEmail(),
@@ -18,11 +18,8 @@ public record UserProfileResponse(
                 user.getName(),
                 user.getGender() != null ? user.getGender().name() : null,
                 user.getBirthday(),
-                user.getAddress(),
-                prefs != null ? new Preferences(
-                        prefs.getHealthMode() != null ? prefs.getHealthMode().name() : null,
-                        prefs.getDefaultMode() != null ? prefs.getDefaultMode().name() : null
-                ) : null
+                prefs != null ? prefs.getEveningCoach() : null,
+                prefs != null ? prefs.getChallengeReminder() : null
         ));
     }
 
@@ -33,14 +30,8 @@ public record UserProfileResponse(
             String name,
             String gender,
             LocalDate birthday,
-            String address,
-            Preferences preferences
-    ) {
-    }
-
-    public record Preferences(
-            String healthMode,
-            String defaultMode
+            Boolean eveningCoach,
+            Boolean challengeReminder
     ) {
     }
 }

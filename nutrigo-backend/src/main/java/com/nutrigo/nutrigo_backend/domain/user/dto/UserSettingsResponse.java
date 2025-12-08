@@ -4,13 +4,12 @@ public record UserSettingsResponse(
         boolean success,
         Data data
 ) {
-    public static UserSettingsResponse from(Boolean eveningCoach, Boolean challengeReminder, String defaultMode) {
-        return new UserSettingsResponse(true, new Data(new Notification(eveningCoach, challengeReminder), defaultMode));
+    public static UserSettingsResponse from(Boolean eveningCoach, Boolean challengeReminder) {
+        return new UserSettingsResponse(true, new Data(new Notification(eveningCoach, challengeReminder)));
     }
 
     public record Data(
-            Notification notification,
-            String defaultMode
+            Notification notification
     ) {
     }
 

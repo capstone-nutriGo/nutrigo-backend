@@ -39,9 +39,6 @@ public class User {
 
     private LocalDate birthday;
 
-    @Column(length = 200)
-    private String address;
-
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -49,5 +46,5 @@ public class User {
     private LocalDateTime updatedAt;
 
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
-    private UserPreferences preferences;
+    private UserSetting preferences;
 }

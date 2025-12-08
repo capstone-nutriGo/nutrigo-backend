@@ -4,6 +4,7 @@ import com.nutrigo.nutrigo_backend.domain.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -28,21 +29,17 @@ public class UserChallenge {
     @JoinColumn(name = "challenge_id", nullable = false)
     private Challenge challenge;
 
-    @Column(name = "status",
-            columnDefinition = "ENUM('ongoing','completed','failed')")
+    @Column(name = "status", columnDefinition = "ENUM('ongoing','completed','failed')")
     private String status;
 
     @Column(name = "progress_rate")
-    private Integer progressRate;
-
-    @Column(name = "logs_count")
-    private Integer logsCount;
+    private Float progressRate;
 
     @Column(name = "started_at")
-    private LocalDateTime startedAt;
+    private LocalDate startedAt;
 
     @Column(name = "ended_at")
-    private LocalDateTime endedAt;
+    private LocalDate endedAt;
 
     @Column(name = "finished_at")
     private LocalDateTime finishedAt;

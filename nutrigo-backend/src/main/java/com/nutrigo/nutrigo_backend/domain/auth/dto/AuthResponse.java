@@ -1,13 +1,13 @@
 package com.nutrigo.nutrigo_backend.domain.auth.dto;
 
 import com.nutrigo.nutrigo_backend.domain.user.User;
-import com.nutrigo.nutrigo_backend.domain.user.UserPreferences;
+import com.nutrigo.nutrigo_backend.domain.user.UserSetting;
 
 public record AuthResponse(
         boolean success,
         TokenData data
 ) {
-    public static AuthResponse from(String accessToken, String refreshToken, User user, UserPreferences preferences) {
+    public static AuthResponse from(String accessToken, String refreshToken, User user, UserSetting preferences) {
         return new AuthResponse(true, new TokenData(
                 accessToken,
                 refreshToken,

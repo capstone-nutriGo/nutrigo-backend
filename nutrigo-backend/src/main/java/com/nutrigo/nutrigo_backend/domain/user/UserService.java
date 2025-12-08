@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final UserPreferencesRepository userPreferencesRepository;
+    private final UserSettingRepository userSettingRepository;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getProfile(String authorization) {
@@ -40,23 +40,7 @@ public class UserService {
         if (request.birthday() != null) {
             user.setBirthday(request.birthday());
         }
-        if (request.address() != null) {
-            user.setAddress(request.address());
-        }
         user.setUpdatedAt(LocalDateTime.now());
-
-        if (request.preferences() != null) {
-            UserPreferences preferences = ensurePreferences(user);
-            if (request.preferences().healthMode() != null) {
-                preferences.setHealthMode(request.preferences().healthMode());
-            }
-            if (request.preferences().defaultMode() != null) {
-                preferences.setDefaultMode(request.preferences().defaultMode());
-            }
-            preferences.setUpdatedAt(LocalDateTime.now());
-            user.setPreferences(preferences);
-            userPreferencesRepository.save(preferences);
-        }
 
         userRepository.save(user);
         return UserProfileResponse.from(user);
@@ -65,7 +49,7 @@ public class UserService {
     @Transactional
     public UserSettingsResponse updateSettings(UserSettingsRequest request, String authorization) {
         User user = getCurrentUser(authorization);
-        UserPreferences preferences = ensurePreferences(user);
+        UserSetting preferences = ensurePreferences(user);
 
         if (request.notification() != null) {
             if (request.notification().eveningCoach() != null) {
@@ -75,20 +59,16 @@ public class UserService {
                 preferences.setChallengeReminder(request.notification().challengeReminder());
             }
         }
-        if (request.defaultMode() != null) {
-            preferences.setDefaultMode(request.defaultMode());
-        }
 
         preferences.setUpdatedAt(LocalDateTime.now());
         user.setPreferences(preferences);
 
-        userPreferencesRepository.save(preferences);
+        userSettingRepository.save(preferences);
         userRepository.save(user);
 
         return UserSettingsResponse.from(
                 preferences.getEveningCoach(),
-                preferences.getChallengeReminder(),
-                preferences.getDefaultMode() != null ? preferences.getDefaultMode().name() : null
+                preferences.getChallengeReminder()
         );
     }
 
@@ -129,11 +109,13 @@ public class UserService {
                 .orElseThrow(() -> new IllegalStateException("No users available"));
     }
 
-    private UserPreferences ensurePreferences(User user) {
-        return userPreferencesRepository.findById(user.getId())
-                .orElseGet(() -> UserPreferences.builder()
+    private UserSetting ensurePreferences(User user) {
+        return userSettingRepository.findById(user.getId())
+                .orElseGet(() -> UserSetting.builder()
                         .user(user)
                         .updatedAt(LocalDateTime.now())
+                        .eveningCoach(true)
+                        .challengeReminder(true)
                         .build());
     }
 }
