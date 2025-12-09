@@ -3,7 +3,7 @@ package com.nutrigo.nutrigo_backend.domain.insight.dto;
 import com.nutrigo.nutrigo_backend.global.common.enums.MealTime;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record DayMealsResponse(
@@ -15,16 +15,28 @@ public record DayMealsResponse(
             Float totalKcal,
             Float totalSodiumMg,
             Float totalProteinG,
+            Float totalCarbG,
             Integer totalMeals,
+            Integer totalSnack,
+            Integer totalNight,
+            Float dayScore,
+            String dayColor,
             List<Meal> meals
     ) {
     }
 
     public record Meal(
             Long mealLogId,
-            String source,
+            String menu,
+            String category,
             MealTime mealTime,
-            OffsetDateTime orderedAt
+            LocalDate mealDate,
+            LocalDateTime createdAt,
+            Float kcal,
+            Float sodiumMg,
+            Float proteinG,
+            Float carbG,
+            Float totalScore
     ) {
     }
 }

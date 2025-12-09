@@ -33,25 +33,28 @@ public class DailyIntakeSummary {
     @Column(name = "total_protein_g")
     private Float totalProteinG;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "total_carb_g")
+    private Float totalCarbG;
+
+    @Column(name = "total_snack")
+    private Integer totalSnack;
+
+    @Column(name = "total_night")
+    private Integer totalNight;
+
+    @Column(name = "day_score")
+    private Float dayScore;
+
+    @Column(name = "day_color", columnDefinition = "ENUM('red','yellow','green')")
+    private String dayColor;
+
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
-    @Column(name = "total_meals")
-    private Integer totalMeals;
-
-    @Column(name = "is_good_day")
-    private Boolean goodDay;
-
-    @Column(name = "is_overeat_day")
-    private Boolean overeatDay;
-
-    @Column(name = "is_low_sodium_day")
-    private Boolean lowSodiumDay;
-
-    @Column(name = "day_score")
-    private Float dayScore;
 }
