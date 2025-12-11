@@ -29,6 +29,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
 	// --- Data / DB ---
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -47,6 +48,13 @@ dependencies {
 	// --- DB Migration (Flyway) ---
 	implementation 'org.flywaydb:flyway-core:11.18.0'
 	runtimeOnly 'org.flywaydb:flyway-mysql'
+
+	// --- 카카오 로그인 ---
+	//Webflux
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+	//thymeleaf
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 
 	// --- Dev / Annotation ---
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
