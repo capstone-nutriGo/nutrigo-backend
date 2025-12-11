@@ -9,12 +9,14 @@ import com.nutrigo.nutrigo_backend.domain.auth.dto.SocialLoginRequest;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Auth.DuplicateEmailException;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Auth.InvalidCredentialsException;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Auth.UserNotFoundException;
+import com.nutrigo.nutrigo_backend.global.common.enums.Gender;
 import com.nutrigo.nutrigo_backend.domain.user.User;
 import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -92,9 +94,17 @@ public class AuthService {
 
     @Transactional
     public AuthResponse socialLogin(SocialLoginRequest request) {
-        String email = request.provider().name().toLowerCase() + "_user@" + request.provider().name().toLowerCase() + ".com";
+        return socialLogin(request, null, null);
+    }
+
+    @Transactional
+    public AuthResponse socialLogin(SocialLoginRequest request, String emailOverride, String nicknameOverride) {
+        String provider = request.provider().name().toLowerCase();
+        String email = emailOverride != null ? emailOverride : provider + "_user@" + provider + ".com";
+        String nickname = nicknameOverride != null ? nicknameOverride : request.provider().name() + "유저";
+
         User user = userRepository.findByEmail(email)
-                .orElseGet(() -> createSocialUser(email, request.provider().name() + "유저"));
+                .orElseGet(() -> createSocialUser(email, nickname));
         String accessToken = generateToken(user.getId());
         String refreshToken = generateToken(user.getId());
         return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences());
@@ -117,14 +127,26 @@ public class AuthService {
 
     private User createSocialUser(String email, String nickname) {
         LocalDateTime now = LocalDateTime.now();
+        String safeNickname = nickname != null ? nickname : "소셜 유저";
+        String safeName = safeNickname;
         User user = User.builder()
-                .email(email)
+                .email(truncate(email, 100))
                 .password(UUID.randomUUID().toString()) // password는 UUID만 사용
-                .nickname(nickname)
+                .nickname(truncate(safeNickname, 50))
+                .name(truncate(safeName, 30))
+                .gender(Gender.other)
+                .birthday(User.SOCIAL_PLACEHOLDER_BIRTHDAY)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
         return userRepository.save(user);
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 
     private String generateToken(Long userId) {

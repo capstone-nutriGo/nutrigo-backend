@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 @Builder
 public class User {
 
+    public static final LocalDate SOCIAL_PLACEHOLDER_BIRTHDAY = LocalDate.of(1900, 1, 1);
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // PK는 AUTO_INCREMENT 가정
     @Column(name = "user_id")
