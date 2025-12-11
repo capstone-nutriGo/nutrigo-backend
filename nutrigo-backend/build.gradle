@@ -58,6 +58,10 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// --- AWS S3 (presigned URL & storage) ---
+	implementation 'software.amazon.awssdk:s3:2.26.23'
+	implementation 'software.amazon.awssdk:sts:2.26.23'
 }
 
 tasks.named('test') {

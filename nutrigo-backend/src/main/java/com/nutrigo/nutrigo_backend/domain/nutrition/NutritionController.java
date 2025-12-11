@@ -15,6 +15,42 @@ public class NutritionController {
     private final NutritionService nutritionService;
 
     /**
+     * POST /api/v1/nutrition/upload-url
+     * 이미지 업로드용 presigned PUT URL 발급
+     */
+    @PostMapping("/upload-url")
+    public ResponseEntity<ApiResponse<ImageUploadUrlResponse>> createUploadUrl(
+            @RequestBody @Valid ImageUploadUrlRequest request
+    ) {
+        ImageUploadUrlResponse result = nutritionService.createUploadUrl(request);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /**
+     * POST /api/v1/nutrition/cart-image/upload-url
+     * CART 이미지 전용 presigned PUT URL 발급
+     */
+    @PostMapping("/cart-image/upload-url")
+    public ResponseEntity<ApiResponse<ImageUploadUrlResponse>> createCartUploadUrl(
+            @RequestBody @Valid ImageUploadContentTypeRequest request
+    ) {
+        ImageUploadUrlResponse result = nutritionService.createCartImageUploadUrl(request);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /**
+     * POST /api/v1/nutrition/order-image/upload-url
+     * ORDER 이미지 전용 presigned PUT URL 발급
+     */
+    @PostMapping("/order-image/upload-url")
+    public ResponseEntity<ApiResponse<ImageUploadUrlResponse>> createOrderUploadUrl(
+            @RequestBody @Valid ImageUploadContentTypeRequest request
+    ) {
+        ImageUploadUrlResponse result = nutritionService.createOrderImageUploadUrl(request);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /**
      * POST /api/v1/nutrition/store-link
      * 배달앱 가게 링크 기반 영양 분석
      */

@@ -14,6 +14,7 @@ import java.util.List;
 public class NutritionService {
 
     private final NutrigoAiClient nutrigoAiClient;
+    private final ImageUploadService imageUploadService;
 
     /**
      * 배달앱 가게 링크 기반 영양 분석
@@ -30,6 +31,30 @@ public class NutritionService {
                         : 0);
 
         return response;
+    }
+
+    /**
+     * 업로드용 presigned URL 발급 (generic)
+     */
+    @Transactional(readOnly = true)
+    public ImageUploadUrlResponse createUploadUrl(ImageUploadUrlRequest request) {
+        return imageUploadService.createUploadUrl(request);
+    }
+
+    /**
+     * Cart 이미지 전용 업로드 URL
+     */
+    @Transactional(readOnly = true)
+    public ImageUploadUrlResponse createCartImageUploadUrl(ImageUploadContentTypeRequest request) {
+        return imageUploadService.createUploadUrl(UploadType.CART_IMAGE, request.getContentType());
+    }
+
+    /**
+     * Order 이미지 전용 업로드 URL
+     */
+    @Transactional(readOnly = true)
+    public ImageUploadUrlResponse createOrderImageUploadUrl(ImageUploadContentTypeRequest request) {
+        return imageUploadService.createUploadUrl(UploadType.ORDER_IMAGE, request.getContentType());
     }
 
     /**
