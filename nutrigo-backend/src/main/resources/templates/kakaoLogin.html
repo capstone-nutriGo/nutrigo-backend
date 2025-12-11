@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Kakao Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .card { padding: 24px; border: 1px solid #ddd; border-radius: 8px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .button { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; background-color: #FEE500; color: #3c1e1e; border-radius: 8px; font-weight: bold; text-decoration: none; border: 1px solid #e6c200; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>카카오로 로그인</h2>
+    <a class="button" th:href="${kakaoLoginUrl}">
+        <span>카카오 로그인</span>
+    </a>
+    <p style="margin-top:12px; color:#666; font-size: 0.9rem;">버튼을 클릭하면 카카오 로그인 창이 열립니다.</p>
+</div>
+</body>
+</html>

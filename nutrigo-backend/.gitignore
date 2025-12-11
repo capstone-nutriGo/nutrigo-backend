@@ -86,6 +86,7 @@ reports/
 *.csv
 *.json
 *.html
+!src/main/resources/templates/**/*.html
 *.xml
 
 ### Docker ###
