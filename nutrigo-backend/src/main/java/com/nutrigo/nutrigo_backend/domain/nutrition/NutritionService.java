@@ -6,7 +6,7 @@ import com.nutrigo.nutrigo_backend.domain.insight.MealLog;
 import com.nutrigo.nutrigo_backend.domain.insight.MealLogRepository;
 import com.nutrigo.nutrigo_backend.domain.nutrition.dto.*;
 import com.nutrigo.nutrigo_backend.domain.user.User;
-import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
+import com.nutrigo.nutrigo_backend.global.security.AuthenticatedUserProvider;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +27,7 @@ public class NutritionService {
     private final ImageUploadService imageUploadService;
     private final MealLogRepository mealLogRepository;
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
-    private final UserRepository userRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     /**
      * 배달앱 가게 링크 기반 영양 분석
@@ -249,9 +249,6 @@ public class NutritionService {
     }
 
     private User getCurrentUser() {
-        return userRepository.findAll()
-                .stream()
-                .findFirst()
-                .orElseThrow(AppExceptions.User.UserNotFoundException::new);
+        return authenticatedUserProvider.getCurrentUser();
     }
 }

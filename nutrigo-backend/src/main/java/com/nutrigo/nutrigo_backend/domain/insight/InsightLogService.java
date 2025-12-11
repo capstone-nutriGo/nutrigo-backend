@@ -5,9 +5,8 @@ import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogResponse;
 import com.nutrigo.nutrigo_backend.domain.insight.dto.MealAnalysisResult;
 import com.nutrigo.nutrigo_backend.domain.insight.dto.NutrientProfile;
 import com.nutrigo.nutrigo_backend.domain.user.User;
-import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
 import com.nutrigo.nutrigo_backend.global.common.enums.MealTime;
-import com.nutrigo.nutrigo_backend.global.error.AppExceptions.User.UserNotFoundException;
+import com.nutrigo.nutrigo_backend.global.security.AuthenticatedUserProvider;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,7 +21,7 @@ import java.util.Optional;
 public class InsightLogService {
 
     private final MealLogRepository mealLogRepository;
-    private final UserRepository userRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
     private final NutritionScoreService nutritionScoreService;
     private final MealAnalysisClient mealAnalysisClient;
@@ -125,9 +124,6 @@ public class InsightLogService {
     }
 
     private User getCurrentUser() {
-        return userRepository.findAll()
-                .stream()
-                .findFirst()
-                .orElseThrow(UserNotFoundException::new);
+        return authenticatedUserProvider.getCurrentUser();
     }
 }

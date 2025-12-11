@@ -1,7 +1,9 @@
 package com.nutrigo.nutrigo_backend.domain.insight;
 
 import com.nutrigo.nutrigo_backend.domain.insight.dto.*;
+import com.nutrigo.nutrigo_backend.domain.user.User;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Insight.InvalidReportRangeException;
+import com.nutrigo.nutrigo_backend.global.security.AuthenticatedUserProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,13 +22,15 @@ public class InsightQueryService {
 
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
     private final MealLogRepository mealLogRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     public WeeklyInsightSummaryResponse getWeeklySummary(LocalDate baseDate) {
+        User user = getCurrentUser();
         LocalDate weekStart = baseDate.with(DayOfWeek.MONDAY);
         LocalDate weekEnd = baseDate.with(DayOfWeek.SUNDAY);
 
-        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByDateBetween(weekStart, weekEnd);
-        List<MealLog> mealLogs = mealLogRepository.findAllByMealDateBetween(weekStart, weekEnd);
+        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByUserAndDateBetween(user, weekStart, weekEnd);
+        List<MealLog> mealLogs = mealLogRepository.findAllByDailyIntakeSummary_UserAndMealDateBetween(user, weekStart, weekEnd);
 
         int totalMeals = mealLogs.size();
 
@@ -93,13 +97,14 @@ public class InsightQueryService {
     }
 
     public InsightReportResponse getReport(String range, LocalDate baseDate) {
+        User user = getCurrentUser();
         InsightReportResponse.ReportRange reportRange = parseRange(range);
         LocalDate startDate = calculateStartDate(reportRange, baseDate);
         LocalDate endDate = calculateEndDate(reportRange, baseDate);
 
-        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByDateBetween(startDate, endDate);
+        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByUserAndDateBetween(user, startDate, endDate);
 
-        int totalMeals = mealLogRepository.findAllByMealDateBetween(startDate, endDate).size();
+        int totalMeals = mealLogRepository.findAllByDailyIntakeSummary_UserAndMealDateBetween(user, startDate, endDate).size();
 
         long goodDays = summaries.stream().filter(summary -> "green".equalsIgnoreCase(summary.getDayColor())).count();
         long overeatDays = summaries.stream().filter(summary -> "red".equalsIgnoreCase(summary.getDayColor())).count();
@@ -137,7 +142,8 @@ public class InsightQueryService {
     }
 
     public InsightCalendarResponse getCalendar(LocalDate startDate, LocalDate endDate) {
-        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByDateBetween(startDate, endDate);
+        User user = getCurrentUser();
+        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByUserAndDateBetween(user, startDate, endDate);
 
         List<InsightCalendarResponse.Day> days = summaries.stream()
                 .map(this::toCalendarDay)
@@ -153,9 +159,10 @@ public class InsightQueryService {
     }
 
     public DayMealsResponse getDayMeals(LocalDate date) {
-        DailyIntakeSummary summary = dailyIntakeSummaryRepository.findByDate(date).orElse(null);
+        User user = getCurrentUser();
+        DailyIntakeSummary summary = dailyIntakeSummaryRepository.findByUserAndDate(user, date).orElse(null);
 
-        List<MealLog> mealLogs = mealLogRepository.findAllByMealDate(date);
+        List<MealLog> mealLogs = mealLogRepository.findAllByDailyIntakeSummary_UserAndMealDate(user, date);
         List<DayMealsResponse.Meal> meals = mealLogs.stream()
                 .map(mealLog -> new DayMealsResponse.Meal(
                         mealLog.getId(),
@@ -187,6 +194,10 @@ public class InsightQueryService {
         );
 
         return new DayMealsResponse(true, data);
+    }
+
+    private User getCurrentUser() {
+        return authenticatedUserProvider.getCurrentUser();
     }
 
     private LocalDate calculateStartDate(InsightReportResponse.ReportRange range, LocalDate baseDate) {
