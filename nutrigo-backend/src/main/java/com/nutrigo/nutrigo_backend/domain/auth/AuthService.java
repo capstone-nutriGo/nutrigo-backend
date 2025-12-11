@@ -103,11 +103,18 @@ public class AuthService {
         String email = emailOverride != null ? emailOverride : provider + "_user@" + provider + ".com";
         String nickname = nicknameOverride != null ? nicknameOverride : request.provider().name() + "유저";
 
+        // 이메일로 사용자 조회
+        boolean isNewUser = !userRepository.existsByEmail(email);
+        
         User user = userRepository.findByEmail(email)
-                .orElseGet(() -> createSocialUser(email, nickname));
+                .orElseGet(() -> {
+                    // 새 유저인 경우 회원가입 진행
+                    return createSocialUser(email, nickname);
+                });
+        
         String accessToken = generateToken(user.getId());
         String refreshToken = generateToken(user.getId());
-        return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences());
+        return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences(), isNewUser);
     }
 
     private User createUserFromRegister(RegisterRequest request) {
