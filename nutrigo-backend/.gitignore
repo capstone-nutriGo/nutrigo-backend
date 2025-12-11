@@ -1,0 +1,94 @@
+### Java ###
+*.class
+*.log
+*.ctxt
+*.tmp
+hs_err_pid*
+replay_pid*
+
+### Build artifacts ###
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+target/
+out/
+bin/
+
+### Gradle ###
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+gradle-app.setting
+# Gradle 캐시 디렉터리 (사용자 환경별)
+**/build/
+
+### Spring Boot ###
+# 임시 파일 (DevTools 등)
+spring.log
+*.h2.db
+*.mv.db
+*.trace.db
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### STS / Eclipse ###
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### OS-specific ###
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+### Environment & Secrets ###
+.env
+*.env
+.env.*
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+
+### Test / Reports ###
+test-output/
+reports/
+*.csv
+*.json
+*.html
+!src/main/resources/templates/**/*.html
+*.xml
+
+### Docker ###
+/docker-data/
+/docker-compose.override.yml

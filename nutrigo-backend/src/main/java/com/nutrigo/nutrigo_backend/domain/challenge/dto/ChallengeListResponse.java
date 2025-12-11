@@ -1,0 +1,25 @@
+package com.nutrigo.nutrigo_backend.domain.challenge.dto;
+
+import java.time.LocalDate;
+import java.util.List;
+
+public record ChallengeListResponse(
+        boolean success,
+        Data data
+) {
+    public record Data(List<ChallengeSummary> challenges) {
+    }
+
+    public record ChallengeSummary(
+            Long challengeId,
+            String title,
+            String description,
+            String type,
+            Integer durationDays,
+            String status,
+            Double progressValue,
+            LocalDate startedAt,
+            LocalDate endedAt
+    ) {
+    }
+}

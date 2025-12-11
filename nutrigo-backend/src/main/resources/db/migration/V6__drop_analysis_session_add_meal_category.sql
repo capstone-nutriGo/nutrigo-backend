@@ -1,0 +1,8 @@
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS analysis_session;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+ALTER TABLE `meal_log`
+    ADD COLUMN `category` VARCHAR(50) NULL AFTER `menu`;

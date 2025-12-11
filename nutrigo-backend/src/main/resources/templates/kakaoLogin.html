@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Kakao Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f7f7f7; }
+        .layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; width: min(880px, 90vw); }
+        .card { padding: 24px; border: 1px solid #ddd; border-radius: 8px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08); background: white; }
+        .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 18px; background-color: #FEE500; color: #3c1e1e; border-radius: 8px; font-weight: bold; text-decoration: none; border: 1px solid #e6c200; cursor: pointer; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; }
+        .helper { margin-top: 8px; color: #666; font-size: 0.9rem; }
+        .status { margin-top: 8px; font-size: 0.95rem; }
+        .status.ok { color: #0a7f3f; }
+        .status.error { color: #c0392b; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div class="card">
+        <h2>카카오로 로그인</h2>
+        <a class="button" th:href="${kakaoLoginUrl}">
+            <span>카카오 로그인</span>
+        </a>
+        <p class="helper">버튼을 클릭하면 카카오 로그인 창이 열립니다.</p>
+    </div>
+    <div class="card">
+        <h2>카카오 로그아웃</h2>
+        <button class="button" id="logoutButton" type="button">카카오 로그아웃</button>
+        <p class="helper">로그인 완료 후 자동 저장된 providerAccessToken으로 바로 로그아웃할 수 있습니다.</p>
+        <p id="logoutStatus" class="status"></p>
+    </div>
+    <div class="card hidden" id="profileCard">
+        <h2>필수 정보 입력</h2>
+        <p class="helper">카카오 로그인 후 부족한 성별/생일 정보를 추가로 입력하세요.</p>
+        <label for="genderSelect">성별</label>
+        <select id="genderSelect">
+            <option value="">선택</option>
+            <option value="male">남성</option>
+            <option value="female">여성</option>
+            <option value="other">기타</option>
+        </select>
+        <label for="birthdayInput">생일</label>
+        <input id="birthdayInput" type="date" />
+        <button class="button" id="profileSubmit" type="button">정보 저장</button>
+        <p id="profileStatus" class="status"></p>
+    </div>
+</div>
+<script>
+    (function() {
+        const button = document.getElementById('logoutButton');
+        const statusEl = document.getElementById('logoutStatus');
+        const profileCard = document.getElementById('profileCard');
+        const genderSelect = document.getElementById('genderSelect');
+        const birthdayInput = document.getElementById('birthdayInput');
+        const profileSubmit = document.getElementById('profileSubmit');
+        const profileStatus = document.getElementById('profileStatus');
+
+        let authResponse = null;
+        let cachedToken = localStorage.getItem('kakaoProviderAccessToken') || '';
+        let accessToken = '';
+
+        const loadAuthResponse = () => {
+            const stored = localStorage.getItem('kakaoAuthResponse');
+            if (!stored) return null;
+            try {
+                return JSON.parse(stored);
+            } catch (e) {
+                return null;
+            }
+        };
+
+        const persistAuthResponse = (response) => {
+            authResponse = response;
+            if (response?.data?.accessToken) {
+                accessToken = response.data.accessToken;
+            }
+            if (response?.data?.providerAccessToken) {
+                cachedToken = response.data.providerAccessToken;
+                localStorage.setItem('kakaoProviderAccessToken', cachedToken);
+            }
+            localStorage.setItem('kakaoAuthResponse', JSON.stringify(response));
+            renderProfileCard();
+        };
+
+        const renderProfileCard = () => {
+            const needsProfile = authResponse?.data && authResponse.data.profileComplete === false;
+            profileCard.classList.toggle('hidden', !needsProfile);
+            if (!needsProfile) {
+                profileStatus.textContent = '';
+                return;
+            }
+            profileStatus.textContent = '성별과 생일을 입력한 뒤 저장을 눌러주세요.';
+            profileStatus.className = 'status';
+        };
+
+        button.addEventListener('click', async () => {
+            const token = (cachedToken || '').trim();
+            statusEl.textContent = '';
+            statusEl.className = 'status';
+
+            if (!token) {
+                statusEl.textContent = '먼저 로그인 버튼을 눌러 토큰을 발급받아 주세요.';
+                statusEl.classList.add('error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/auth/kakao/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const body = await response.json();
+                if (response.ok && body.success !== false) {
+                    statusEl.textContent = '카카오 로그아웃 요청이 완료되었습니다.';
+                    statusEl.classList.add('ok');
+                } else {
+                    statusEl.textContent = body.message || '로그아웃 중 오류가 발생했습니다.';
+                    statusEl.classList.add('error');
+                }
+            } catch (error) {
+                statusEl.textContent = '로그아웃 요청에 실패했습니다.';
+                statusEl.classList.add('error');
+            }
+        });
+
+        window.addEventListener('message', (event) => {
+            if (event.origin !== window.location.origin) return;
+            if (event.data && event.data.type === 'kakaoLogin' && event.data.payload) {
+                persistAuthResponse(event.data.payload);
+                statusEl.textContent = '로그인 응답 토큰을 저장했습니다. 이제 로그아웃할 수 있습니다.';
+                statusEl.className = 'status ok';
+            }
+        });
+        window.addEventListener('DOMContentLoaded', () => {
+            cachedToken = localStorage.getItem('kakaoProviderAccessToken') || '';
+            const stored = loadAuthResponse();
+            if (stored) {
+                persistAuthResponse(stored);
+            }
+        });
+
+        profileSubmit.addEventListener('click', async () => {
+            profileStatus.textContent = '';
+            profileStatus.className = 'status';
+
+            if (!accessToken) {
+                profileStatus.textContent = '로그인 후 다시 시도해 주세요.';
+                profileStatus.classList.add('error');
+                return;
+            }
+
+            const gender = genderSelect.value || null;
+            const birthday = birthdayInput.value || null;
+
+            if (!gender || !birthday) {
+                profileStatus.textContent = '성별과 생일을 모두 입력해 주세요.';
+                profileStatus.classList.add('error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/users/me/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify({ gender, birthday })
+                });
+
+                const body = await response.json();
+                if (response.ok && body.success) {
+                    profileStatus.textContent = '필수 정보가 저장되었습니다.';
+                    profileStatus.classList.add('ok');
+                    if (authResponse?.data) {
+                        authResponse.data.profileComplete = true;
+                        persistAuthResponse(authResponse);
+                    }
+                } else {
+                    profileStatus.textContent = body.message || '정보 저장 중 오류가 발생했습니다.';
+                    profileStatus.classList.add('error');
+                }
+            } catch (error) {
+                profileStatus.textContent = '정보 저장 요청에 실패했습니다.';
+                profileStatus.classList.add('error');
+            }
+        });
+    })();
+</script>
+</body>
+</html>
