@@ -10,9 +10,8 @@ import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeProgressDetailR
 import com.nutrigo.nutrigo_backend.domain.insight.DailyIntakeSummary;
 import com.nutrigo.nutrigo_backend.domain.insight.DailyIntakeSummaryRepository;
 import com.nutrigo.nutrigo_backend.domain.user.User;
-import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Challenge.ChallengeNotFoundException;
-import com.nutrigo.nutrigo_backend.global.error.AppExceptions.User.UserNotFoundException;
+import com.nutrigo.nutrigo_backend.global.security.AuthenticatedUserProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +30,7 @@ public class ChallengeService {
 
     private final ChallengeRepository challengeRepository;
     private final UserChallengeRepository userChallengeRepository;
-    private final UserRepository userRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
 
     @Transactional
@@ -314,9 +313,6 @@ public class ChallengeService {
     }
 
     private User getCurrentUser() {
-        return userRepository.findAll()
-                .stream()
-                .findFirst()
-                .orElseThrow(UserNotFoundException::new);
+        return authenticatedUserProvider.getCurrentUser();
     }
 }

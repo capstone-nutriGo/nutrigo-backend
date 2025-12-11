@@ -77,13 +77,6 @@ public class UserService {
         );
     }
 
-    private User getCurrentUser() {
-        return userRepository.findAll()
-                .stream()
-                .findFirst()
-                .orElseThrow(UserNotFoundException::new);
-    }
-
     public User getCurrentUser(String authorization) {
         Long userId = resolveUserId(authorization);
         return userRepository.findById(userId)
