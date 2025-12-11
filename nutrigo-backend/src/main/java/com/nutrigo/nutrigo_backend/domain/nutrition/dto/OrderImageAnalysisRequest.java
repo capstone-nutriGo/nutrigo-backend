@@ -1,17 +1,19 @@
 package com.nutrigo.nutrigo_backend.domain.nutrition.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
+import com.nutrigo.nutrigo_backend.global.common.enums.MealTime;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
+
+import java.time.LocalDate;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CartImageAnalysisRequest {
+public class OrderImageAnalysisRequest {
 
     @JsonProperty("image_url")
     private String imageUrl;
@@ -22,12 +24,16 @@ public class CartImageAnalysisRequest {
     @JsonProperty("capture_id")
     private String captureId;
 
-    @Valid
+    // 클라이언트가 보내는 주문 날짜 / 시간대
     @NotNull
-    @JsonProperty("user_info")
-    private UserInfoRequest userInfo;
+    @JsonProperty("order_date")
+    private LocalDate orderDate;
 
-    @AssertTrue(message = "imageUrl 또는 imageBase64 중 하나는 반드시 포함되어야 합니다.")
+    @NotNull
+    @JsonProperty("meal_time")
+    private MealTime mealTime;  // 아침/점심/저녁/간식 등 기존 enum 재사용
+
+    @AssertTrue(message = "image_url 또는 image_base64 중 하나는 반드시 포함되어야 합니다.")
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     public boolean hasImageSource() {
         return (imageUrl != null && !imageUrl.isBlank())

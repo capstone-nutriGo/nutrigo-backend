@@ -1,9 +1,6 @@
 package com.nutrigo.nutrigo_backend.domain.nutrition;
 
-import com.nutrigo.nutrigo_backend.domain.nutrition.dto.CartImageAnalysisRequest;
-import com.nutrigo.nutrigo_backend.domain.nutrition.dto.NutritionAnalysisResponse;
-import com.nutrigo.nutrigo_backend.domain.nutrition.dto.OrderImageMealLogResponse;
-import com.nutrigo.nutrigo_backend.domain.nutrition.dto.StoreLinkAnalysisRequest;
+import com.nutrigo.nutrigo_backend.domain.nutrition.dto.*;
 import com.nutrigo.nutrigo_backend.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +46,7 @@ public class NutritionController {
      */
     @PostMapping("/order-image")
     public ResponseEntity<ApiResponse<OrderImageMealLogResponse>> analyzeFromOrderImage(
-            @RequestBody @Valid CartImageAnalysisRequest request
+            @RequestBody @Valid OrderImageAnalysisRequest request
     ) {
         OrderImageMealLogResponse response = nutritionService.analyzeFromOrderImage(request);
         return ResponseEntity.ok(ApiResponse.success(response));
