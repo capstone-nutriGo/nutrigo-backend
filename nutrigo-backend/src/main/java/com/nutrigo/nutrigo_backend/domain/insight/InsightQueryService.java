@@ -1,6 +1,8 @@
 package com.nutrigo.nutrigo_backend.domain.insight;
 
 import com.nutrigo.nutrigo_backend.domain.insight.dto.*;
+import com.nutrigo.nutrigo_backend.domain.user.User;
+import com.nutrigo.nutrigo_backend.domain.user.UserService;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Insight.InvalidReportRangeException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,13 +22,15 @@ public class InsightQueryService {
 
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
     private final MealLogRepository mealLogRepository;
+    private final UserService userService;
 
-    public WeeklyInsightSummaryResponse getWeeklySummary(LocalDate baseDate) {
+    public WeeklyInsightSummaryResponse getWeeklySummary(LocalDate baseDate, String authorization) {
+        User user = userService.getCurrentUser(authorization);
         LocalDate weekStart = baseDate.with(DayOfWeek.MONDAY);
         LocalDate weekEnd = baseDate.with(DayOfWeek.SUNDAY);
 
-        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByDateBetween(weekStart, weekEnd);
-        List<MealLog> mealLogs = mealLogRepository.findAllByMealDateBetween(weekStart, weekEnd);
+        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByUserAndDateBetween(user, weekStart, weekEnd);
+        List<MealLog> mealLogs = mealLogRepository.findAllByDailyIntakeSummary_UserAndMealDateBetween(user, weekStart, weekEnd);
 
         int totalMeals = mealLogs.size();
 
@@ -60,8 +64,14 @@ public class InsightQueryService {
                 .toList();
 
         List<WeeklyInsightSummaryResponse.CategoryStat> categoryTop3 = mealLogs.stream()
-                .map(MealLog::getCategory)
-                .map(category -> (category == null || category.isBlank()) ? "UNCATEGORIZED" : category)
+                .map(mealLog -> {
+                    String category = mealLog.getCategory();
+                    // 카테고리가 없으면 메뉴명에서 추론
+                    if (category == null || category.isBlank()) {
+                        category = inferCategoryFromMenu(mealLog.getMenu());
+                    }
+                    return category;
+                })
                 .collect(Collectors.groupingBy(category -> category, Collectors.counting()))
                 .entrySet()
                 .stream()
@@ -92,14 +102,15 @@ public class InsightQueryService {
         return new WeeklyInsightSummaryResponse(true, data);
     }
 
-    public InsightReportResponse getReport(String range, LocalDate baseDate) {
+    public InsightReportResponse getReport(String range, LocalDate baseDate, String authorization) {
+        User user = userService.getCurrentUser(authorization);
         InsightReportResponse.ReportRange reportRange = parseRange(range);
         LocalDate startDate = calculateStartDate(reportRange, baseDate);
         LocalDate endDate = calculateEndDate(reportRange, baseDate);
 
-        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByDateBetween(startDate, endDate);
+        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByUserAndDateBetween(user, startDate, endDate);
 
-        int totalMeals = mealLogRepository.findAllByMealDateBetween(startDate, endDate).size();
+        int totalMeals = mealLogRepository.findAllByDailyIntakeSummary_UserAndMealDateBetween(user, startDate, endDate).size();
 
         long goodDays = summaries.stream().filter(summary -> "green".equalsIgnoreCase(summary.getDayColor())).count();
         long overeatDays = summaries.stream().filter(summary -> "red".equalsIgnoreCase(summary.getDayColor())).count();
@@ -136,8 +147,9 @@ public class InsightQueryService {
         return new InsightReportResponse(true, data);
     }
 
-    public InsightCalendarResponse getCalendar(LocalDate startDate, LocalDate endDate) {
-        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByDateBetween(startDate, endDate);
+    public InsightCalendarResponse getCalendar(LocalDate startDate, LocalDate endDate, String authorization) {
+        User user = userService.getCurrentUser(authorization);
+        List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByUserAndDateBetween(user, startDate, endDate);
 
         List<InsightCalendarResponse.Day> days = summaries.stream()
                 .map(this::toCalendarDay)
@@ -152,10 +164,11 @@ public class InsightQueryService {
         return new InsightCalendarResponse(true, data);
     }
 
-    public DayMealsResponse getDayMeals(LocalDate date) {
-        DailyIntakeSummary summary = dailyIntakeSummaryRepository.findByDate(date).orElse(null);
+    public DayMealsResponse getDayMeals(LocalDate date, String authorization) {
+        User user = userService.getCurrentUser(authorization);
+        DailyIntakeSummary summary = dailyIntakeSummaryRepository.findByUserAndDate(user, date).orElse(null);
 
-        List<MealLog> mealLogs = mealLogRepository.findAllByMealDate(date);
+        List<MealLog> mealLogs = mealLogRepository.findAllByDailyIntakeSummary_UserAndMealDate(user, date);
         List<DayMealsResponse.Meal> meals = mealLogs.stream()
                 .map(mealLog -> new DayMealsResponse.Meal(
                         mealLog.getId(),
@@ -234,5 +247,69 @@ public class InsightQueryService {
         } catch (IllegalArgumentException e) {
             throw new InvalidReportRangeException(value);
         }
+    }
+
+    /**
+     * 메뉴명에서 카테고리를 추론하는 유틸리티 메서드
+     */
+    private String inferCategoryFromMenu(String menu) {
+        if (menu == null || menu.isBlank()) {
+            return "UNCATEGORIZED";
+        }
+        
+        String menuLower = menu.toLowerCase();
+        
+        // 일식
+        if (menuLower.contains("초밥") || menuLower.contains("회") || menuLower.contains("연어") 
+            || menuLower.contains("담다") || menuLower.contains("사시미") || menuLower.contains("우동")
+            || menuLower.contains("라멘") || menuLower.contains("돈부리") || menuLower.contains("가츠")
+            || menuLower.contains("돈까스") || menuLower.contains("규동") || menuLower.contains("오니기리")) {
+            return "일식";
+        }
+        
+        // 중식
+        if (menuLower.contains("짜장") || menuLower.contains("짬뽕") || menuLower.contains("볶음밥")
+            || menuLower.contains("탕수육") || menuLower.contains("마파두부") || menuLower.contains("양장피")
+            || menuLower.contains("깐풍") || menuLower.contains("유산슬") || menuLower.contains("팔보채")
+            || menuLower.contains("마라") || menuLower.contains("훠궈") || menuLower.contains("딤섬")) {
+            return "중식";
+        }
+        
+        // 한식
+        if (menuLower.contains("비빔밥") || menuLower.contains("한우") || menuLower.contains("생육회")
+            || menuLower.contains("김치") || menuLower.contains("된장") || menuLower.contains("국밥")
+            || menuLower.contains("냉면") || menuLower.contains("불고기") || menuLower.contains("갈비")
+            || menuLower.contains("삼겹살") || menuLower.contains("보쌈") || menuLower.contains("족발")
+            || menuLower.contains("떡볶이") || menuLower.contains("순두부") || menuLower.contains("부대찌개")
+            || menuLower.contains("김밥") || menuLower.contains("라면") || menuLower.contains("국수")) {
+            return "한식";
+        }
+        
+        // 치킨
+        if (menuLower.contains("치킨") || menuLower.contains("닭") || menuLower.contains("윙")
+            || menuLower.contains("닭강정") || menuLower.contains("후라이드") || menuLower.contains("양념")) {
+            return "치킨";
+        }
+        
+        // 양식
+        if (menuLower.contains("파스타") || menuLower.contains("스테이크") || menuLower.contains("피자")
+            || menuLower.contains("햄버거") || menuLower.contains("샐러드") || menuLower.contains("리조또")
+            || menuLower.contains("스파게티") || menuLower.contains("라자냐") || menuLower.contains("그라탕")) {
+            return "양식";
+        }
+        
+        // 분식
+        if (menuLower.contains("떡볶이") || menuLower.contains("순대") || menuLower.contains("튀김")
+            || menuLower.contains("어묵") || menuLower.contains("핫도그") || menuLower.contains("만두")) {
+            return "분식";
+        }
+        
+        // 카페/디저트
+        if (menuLower.contains("케이크") || menuLower.contains("마카롱") || menuLower.contains("도넛")
+            || menuLower.contains("와플") || menuLower.contains("크로플") || menuLower.contains("빙수")) {
+            return "디저트";
+        }
+        
+        return "UNCATEGORIZED";
     }
 }

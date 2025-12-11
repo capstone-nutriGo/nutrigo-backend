@@ -26,6 +26,23 @@ public record InsightLogRequest(
 
         @NotNull(message = "식사 날짜를 선택해주세요")
         @JsonFormat(pattern = "yyyy-MM-dd")
-        LocalDate mealDate
+        LocalDate mealDate,
+
+        // 이미 분석된 영양소 정보 (선택적)
+        @Schema(description = "칼로리 (kcal)", example = "500.0")
+        Float kcal,
+
+        @Schema(description = "나트륨 (mg)", example = "1200.0")
+        Float sodiumMg,
+
+        @Schema(description = "단백질 (g)", example = "30.0")
+        Float proteinG,
+
+        @Schema(description = "탄수화물 (g)", example = "50.0")
+        Float carbG,
+
+        // 카테고리 정보 (선택적)
+        @Schema(description = "음식 카테고리", example = "한식")
+        String category
 ) {
 }

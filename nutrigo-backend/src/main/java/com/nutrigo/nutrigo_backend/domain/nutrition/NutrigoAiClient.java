@@ -6,6 +6,8 @@ import com.nutrigo.nutrigo_backend.domain.nutrition.dto.NutritionAnalysisRespons
 import com.nutrigo.nutrigo_backend.domain.nutrition.dto.OrderImageAnalysisRequest;
 import com.nutrigo.nutrigo_backend.domain.nutrition.dto.OrderImageMealLogResponse;
 import com.nutrigo.nutrigo_backend.domain.nutrition.dto.StoreLinkAnalysisRequest;
+import com.nutrigo.nutrigo_backend.domain.nutribot.dto.NutriBotCoachRequest;
+import com.nutrigo.nutrigo_backend.domain.nutribot.dto.NutriBotCoachResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -126,6 +128,25 @@ public class NutrigoAiClient {
         } catch (Exception e) {
             log.error("[NutriGo-AI] order-image 호출 중 오류", e);
             throw new RuntimeException("NutriGo-AI order-image 호출 실패", e);
+        }
+    }
+
+    /**
+     * /internal/api/v1/nutribot/coach
+     * - NutriBot 코칭 응답 생성
+     */
+    public NutriBotCoachResponse coachNutriBot(NutriBotCoachRequest request) {
+        try {
+            log.info("[NutriGo-AI] nutribot-coach 요청 DTO: mode={}, userMessage={}",
+                    request.getMode(),
+                    request.getUserMessage());
+
+            String rawJson = postJson("/internal/api/v1/nutribot/coach", request);
+            return objectMapper.readValue(rawJson, NutriBotCoachResponse.class);
+
+        } catch (Exception e) {
+            log.error("[NutriGo-AI] nutribot-coach 호출 중 오류", e);
+            throw new RuntimeException("NutriGo-AI nutribot-coach 호출 실패", e);
         }
     }
 }

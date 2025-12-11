@@ -5,10 +5,10 @@ import com.nutrigo.nutrigo_backend.domain.insight.dto.InsightLogResponse;
 import com.nutrigo.nutrigo_backend.domain.insight.dto.MealAnalysisResult;
 import com.nutrigo.nutrigo_backend.domain.insight.dto.NutrientProfile;
 import com.nutrigo.nutrigo_backend.domain.user.User;
-import com.nutrigo.nutrigo_backend.domain.user.UserRepository;
+import com.nutrigo.nutrigo_backend.domain.user.UserService;
 import com.nutrigo.nutrigo_backend.global.common.enums.MealTime;
-import com.nutrigo.nutrigo_backend.global.error.AppExceptions.User.UserNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,19 +22,34 @@ import java.util.Optional;
 public class InsightLogService {
 
     private final MealLogRepository mealLogRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
     private final NutritionScoreService nutritionScoreService;
     private final MealAnalysisClient mealAnalysisClient;
 
-    @Transactional
-    public InsightLogResponse logInsight(InsightLogRequest request) {
-        User user = getCurrentUser();
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public InsightLogResponse logInsight(InsightLogRequest request, String authorization) {
+        User user = userService.getCurrentUser(authorization);
 
-        MealAnalysisResult analysisResult = mealAnalysisClient.analyze(request);
-        NutrientProfile nutrientProfile = Optional.ofNullable(analysisResult)
-                .map(MealAnalysisResult::nutrientProfile)
-                .orElse(null);
+        // 요청에 영양소 정보가 있으면 직접 사용, 없으면 meal-analysis 서비스 호출
+        NutrientProfile nutrientProfile;
+        MealAnalysisResult analysisResult = null;
+        
+        if (request.kcal() != null || request.sodiumMg() != null || request.proteinG() != null || request.carbG() != null) {
+            // 프론트엔드에서 이미 분석된 영양소 정보 사용
+            nutrientProfile = new NutrientProfile(
+                    request.kcal(),
+                    request.sodiumMg(),
+                    request.proteinG(),
+                    request.carbG()
+            );
+        } else {
+            // meal-analysis 서비스 호출
+            analysisResult = mealAnalysisClient.analyze(request);
+            nutrientProfile = Optional.ofNullable(analysisResult)
+                    .map(MealAnalysisResult::nutrientProfile)
+                    .orElse(null);
+        }
 
         Float mealScore = nutritionScoreService.calculateMealScore(user, nutrientProfile);
         Float totalScore = analysisResult != null && analysisResult.totalScore() != null
@@ -45,7 +60,9 @@ public class InsightLogService {
 
         MealLog mealLog = MealLog.builder()
                 .menu(analysisResult != null && analysisResult.menu() != null ? analysisResult.menu() : request.menu())
-                .category(analysisResult != null ? analysisResult.category() : null)
+                .category(request.category() != null && !request.category().isBlank() 
+                        ? request.category() 
+                        : (analysisResult != null ? analysisResult.category() : null))
                 .kcal(nutrientProfile != null ? nutrientProfile.kcal() : null)
                 .sodiumMg(nutrientProfile != null ? nutrientProfile.sodiumMg() : null)
                 .proteinG(nutrientProfile != null ? nutrientProfile.proteinG() : null)
@@ -124,10 +141,4 @@ public class InsightLogService {
         return dailyIntakeSummaryRepository.save(summary);
     }
 
-    private User getCurrentUser() {
-        return userRepository.findAll()
-                .stream()
-                .findFirst()
-                .orElseThrow(UserNotFoundException::new);
-    }
 }

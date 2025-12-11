@@ -150,6 +150,29 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(DATA_INTEGRITY_CODE, "Request conflicts with current data state"));
     }
 
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException e) {
+        log.error("Runtime exception", e);
+        // AI 서비스 연결 오류 등 구체적인 메시지가 있는 경우 전달
+        String message = e.getMessage();
+        if (message != null) {
+            if (message.contains("NutriGo-AI") || message.contains("nutribot-coach")) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(ApiResponse.fail(INTERNAL_SERVER_ERROR_CODE, 
+                                "AI 서비스 연결에 실패했습니다. AI 서비스가 실행 중인지 확인해주세요."));
+            }
+            if (message.contains("Connection") || message.contains("connect") || 
+                message.contains("Connection refused")) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(ApiResponse.fail(INTERNAL_SERVER_ERROR_CODE, 
+                                "외부 서비스 연결에 실패했습니다. 잠시 후 다시 시도해주세요."));
+            }
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.fail(INTERNAL_SERVER_ERROR_CODE, 
+                        message != null && !message.isEmpty() ? message : "Internal server error"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<String>> handleException(Exception e) {
         log.error("Unexpected error", e);

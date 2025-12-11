@@ -4,12 +4,14 @@ import com.nutrigo.nutrigo_backend.domain.nutrition.dto.*;
 import com.nutrigo.nutrigo_backend.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/nutrition")
 @RequiredArgsConstructor
+@Slf4j
 public class NutritionController {
 
     private final NutritionService nutritionService;
@@ -35,7 +37,11 @@ public class NutritionController {
     public ResponseEntity<ApiResponse<NutritionAnalysisResponse>> analyzeFromCartImage(
             @RequestBody @Valid CartImageAnalysisRequest request
     ) {
+        log.info("[NutritionController] cart-image 요청 수신: s3Key={}, captureId={}", 
+                request.getS3Key(), request.getCaptureId());
         NutritionAnalysisResponse result = nutritionService.analyzeFromCartImage(request);
+        log.info("[NutritionController] cart-image 응답 반환: analyses={}", 
+                (result != null && result.getAnalyses() != null) ? result.getAnalyses().size() : 0);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

@@ -1,10 +1,12 @@
 package com.nutrigo.nutrigo_backend.domain.nutrition;
 
 import com.nutrigo.nutrigo_backend.domain.nutrition.dto.*;
+import com.nutrigo.nutrigo_backend.global.infra.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -14,6 +16,7 @@ import java.util.List;
 public class NutritionService {
 
     private final NutrigoAiClient nutrigoAiClient;
+    private final S3Service s3Service;
 
     /**
      * 배달앱 가게 링크 기반 영양 분석
@@ -37,10 +40,13 @@ public class NutritionService {
      */
     @Transactional(readOnly = true)
     public NutritionAnalysisResponse analyzeFromCartImage(CartImageAnalysisRequest request) {
-        log.info("[NutritionService] cart-image 분석 시작: captureId={}, imageUrl={}",
-                request.getCaptureId(), request.getImageUrl());
+        log.info("[NutritionService] cart-image 분석 시작: captureId={}, imageUrl={}, s3Key={}",
+                request.getCaptureId(), request.getImageUrl(), request.getS3Key());
 
-        NutritionAnalysisResponse response = nutrigoAiClient.analyzeCartImage(request);
+        // S3 키가 있으면 presigned GET URL로 변환하여 imageUrl에 설정
+        CartImageAnalysisRequest processedRequest = processS3Key(request);
+
+        NutritionAnalysisResponse response = nutrigoAiClient.analyzeCartImage(processedRequest);
 
         log.info("[NutritionService] cart-image 분석 완료: analyses={}",
                 (response != null && response.getAnalyses() != null)
@@ -58,12 +64,15 @@ public class NutritionService {
      */
     @Transactional(readOnly = true)
     public OrderImageMealLogResponse analyzeFromOrderImage(OrderImageAnalysisRequest request) {
-        log.info("[NutritionService] order-image 분석 시작: captureId={}, imageUrl={}, orderDate={}, mealTime={}",
-                request.getCaptureId(), request.getImageUrl(),
+        log.info("[NutritionService] order-image 분석 시작: captureId={}, imageUrl={}, s3Key={}, orderDate={}, mealTime={}",
+                request.getCaptureId(), request.getImageUrl(), request.getS3Key(),
                 request.getOrderDate(), request.getMealTime());
 
+        // S3 키가 있으면 presigned GET URL로 변환하여 imageUrl에 설정
+        OrderImageAnalysisRequest processedRequest = processS3Key(request);
+
         // 1) NutriGo-AI 호출 (Python 서버로 order-image 요청)
-        OrderImageMealLogResponse response = nutrigoAiClient.analyzeOrderImage(request);
+        OrderImageMealLogResponse response = nutrigoAiClient.analyzeOrderImage(processedRequest);
 
         // 2) 섭취량 슬라이더용 기본 범위 세팅
         applyDefaultIntakeRanges(response);
@@ -81,6 +90,32 @@ public class NutritionService {
                         : 0);
 
         return response;
+    }
+
+    /**
+     * S3 키가 있으면 presigned GET URL로 변환하여 imageUrl에 설정
+     */
+    private CartImageAnalysisRequest processS3Key(CartImageAnalysisRequest request) {
+        if (StringUtils.hasText(request.getS3Key()) && !StringUtils.hasText(request.getImageUrl())) {
+            // S3 키를 presigned GET URL로 변환 (1시간 유효)
+            String presignedUrl = s3Service.generatePresignedGetUrl(request.getS3Key(), 3600);
+            request.setImageUrl(presignedUrl);
+            log.info("[NutritionService] S3 키를 presigned URL로 변환: s3Key={}", request.getS3Key());
+        }
+        return request;
+    }
+
+    /**
+     * S3 키가 있으면 presigned GET URL로 변환하여 imageUrl에 설정
+     */
+    private OrderImageAnalysisRequest processS3Key(OrderImageAnalysisRequest request) {
+        if (StringUtils.hasText(request.getS3Key()) && !StringUtils.hasText(request.getImageUrl())) {
+            // S3 키를 presigned GET URL로 변환 (1시간 유효)
+            String presignedUrl = s3Service.generatePresignedGetUrl(request.getS3Key(), 3600);
+            request.setImageUrl(presignedUrl);
+            log.info("[NutritionService] S3 키를 presigned URL로 변환: s3Key={}", request.getS3Key());
+        }
+        return request;
     }
 
 

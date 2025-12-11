@@ -65,3 +65,9 @@ kakao:
 nutrigo:
   ai:
     base-url: http://localhost:8000
+  s3:
+    bucket-name: ${S3_BUCKET_NAME:nutrigo-images}
+    region: ${S3_REGION:ap-northeast-2}
+    access-key: ${AWS_ACCESS_KEY_ID:}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:}
+    presigned-url-expiration: ${S3_PRESIGNED_URL_EXPIRATION:3600} # 초 단위
