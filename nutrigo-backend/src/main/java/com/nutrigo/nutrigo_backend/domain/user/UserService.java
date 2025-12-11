@@ -4,14 +4,10 @@ import com.nutrigo.nutrigo_backend.domain.user.dto.UserProfileResponse;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserProfileUpdateRequest;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserSettingsRequest;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserSettingsResponse;
-import com.nutrigo.nutrigo_backend.global.security.JwtTokenProvider;
-import com.nutrigo.nutrigo_backend.global.error.AppExceptions.User.UserNotFoundException;
+import com.nutrigo.nutrigo_backend.global.security.AuthenticatedUserProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -21,17 +17,17 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserSettingRepository userSettingRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     @Transactional(readOnly = true)
-    public UserProfileResponse getProfile(String authorization) {
-        User user = getCurrentUser(authorization);
+    public UserProfileResponse getProfile() {
+        User user = authenticatedUserProvider.getCurrentUser();
         return UserProfileResponse.from(user);
     }
 
     @Transactional
-    public UserProfileResponse updateProfile(UserProfileUpdateRequest request, String authorization) {
-        User user = getCurrentUser(authorization);
+    public UserProfileResponse updateProfile(UserProfileUpdateRequest request) {
+        User user = authenticatedUserProvider.getCurrentUser();
 
         if (request.nickname() != null) {
             user.setNickname(request.nickname());
@@ -52,8 +48,8 @@ public class UserService {
     }
 
     @Transactional
-    public UserSettingsResponse updateSettings(UserSettingsRequest request, String authorization) {
-        User user = getCurrentUser(authorization);
+    public UserSettingsResponse updateSettings(UserSettingsRequest request) {
+        User user = authenticatedUserProvider.getCurrentUser();
         UserSetting preferences = ensurePreferences(user);
 
         if (request.notification() != null) {
@@ -75,28 +71,6 @@ public class UserService {
                 preferences.getEveningCoach(),
                 preferences.getChallengeReminder()
         );
-    }
-
-    public User getCurrentUser(String authorization) {
-        Long userId = resolveUserId(authorization);
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalStateException("User not found with id: " + userId));
-    }
-
-    private Long resolveUserId(String authorization) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof Long principalId) {
-            return principalId;
-        }
-
-        if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer ")) {
-            String token = authorization.substring(7);
-            if (jwtTokenProvider.validateToken(token)) {
-                return jwtTokenProvider.getUserId(token);
-            }
-        }
-
-        throw new IllegalStateException("Authorization header is missing or invalid");
     }
 
     private UserSetting ensurePreferences(User user) {
