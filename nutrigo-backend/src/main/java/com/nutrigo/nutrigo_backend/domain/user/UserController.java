@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,24 +21,21 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/profile")
-    public ResponseEntity<UserProfileResponse> getProfile(
-            @RequestHeader(value = "Authorization", required = false) String authorization) {
-        return ResponseEntity.ok(userService.getProfile(authorization));
+    public ResponseEntity<UserProfileResponse> getProfile() {
+        return ResponseEntity.ok(userService.getProfile());
     }
 
     @PutMapping("/profile")
     public ResponseEntity<UserProfileResponse> updateProfile(
-            @Valid @RequestBody UserProfileUpdateRequest request,
-            @RequestHeader(value = "Authorization", required = false) String authorization
+            @Valid @RequestBody UserProfileUpdateRequest request
     ) {
-        return ResponseEntity.ok(userService.updateProfile(request, authorization));
+        return ResponseEntity.ok(userService.updateProfile(request));
     }
 
     @PutMapping("/settings")
     public ResponseEntity<UserSettingsResponse> updateSettings(
-            @Valid @RequestBody UserSettingsRequest request,
-            @RequestHeader(value = "Authorization", required = false) String authorization
+            @Valid @RequestBody UserSettingsRequest request
     ) {
-        return ResponseEntity.ok(userService.updateSettings(request, authorization));
+        return ResponseEntity.ok(userService.updateSettings(request));
     }
 }

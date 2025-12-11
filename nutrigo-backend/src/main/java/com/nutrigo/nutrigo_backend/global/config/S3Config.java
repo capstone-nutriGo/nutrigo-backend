@@ -18,16 +18,16 @@ import java.util.Optional;
 @Configuration
 public class S3Config {
 
-    @Value("${aws.s3.region:}")
+    @Value("${nutrigo.s3.region:ap-northeast-2}")
     private String region;
 
-    @Value("${aws.s3.endpoint:}")
+    @Value("${nutrigo.s3.endpoint:}")
     private String endpoint;
 
-    @Value("${aws.access-key:}")
+    @Value("${nutrigo.s3.access-key:}")
     private String accessKey;
 
-    @Value("${aws.secret-key:}")
+    @Value("${nutrigo.s3.secret-key:}")
     private String secretKey;
 
     private Region resolveRegion() {

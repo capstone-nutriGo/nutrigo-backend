@@ -42,3 +42,13 @@ kakao:
     client-id: ${KAKAO_CLIENT_ID}
     client-secret: ${KAKAO_CLIENT_SECRET}
     redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
+
+nutrigo:
+  ai:
+    base-url: ${NUTRIGO_AI_BASE_URL:http://localhost:8000}
+  s3:
+    bucket-name: ${S3_BUCKET_NAME:nutrigo-images}
+    region: ${S3_REGION:ap-northeast-2}
+    access-key: ${AWS_ACCESS_KEY_ID:}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:}
+    presigned-url-expiration: ${S3_PRESIGNED_URL_EXPIRATION:3600}

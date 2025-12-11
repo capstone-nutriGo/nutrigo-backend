@@ -10,6 +10,7 @@ import com.nutrigo.nutrigo_backend.domain.challenge.dto.ChallengeProgressDetailR
 import com.nutrigo.nutrigo_backend.domain.insight.DailyIntakeSummary;
 import com.nutrigo.nutrigo_backend.domain.insight.DailyIntakeSummaryRepository;
 import com.nutrigo.nutrigo_backend.domain.user.User;
+import com.nutrigo.nutrigo_backend.global.common.enums.ChallengeType;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Challenge.ChallengeNotFoundException;
 import com.nutrigo.nutrigo_backend.global.security.AuthenticatedUserProvider;
 import lombok.RequiredArgsConstructor;
@@ -146,19 +147,22 @@ public class ChallengeService {
 
         LocalDate today = LocalDate.now();
         List<DailyIntakeSummary> summaries = loadDailyIntakes(enrollment, today);
-        int progressRate = calculateProgressRate(enrollment, summaries, today);
-        int remainingDays = 0;
-        if ("ongoing".equalsIgnoreCase(enrollment.getStatus()) && enrollment.getEndedAt() != null) {
-            remainingDays = (int) Math.max(0, ChronoUnit.DAYS.between(today, enrollment.getEndedAt()));
-        }
-
+        
+        // 챌린지 조건을 만족하는 날짜만 필터링
+        List<DailyIntakeSummary> validSummaries = filterValidDays(enrollment.getChallenge(), summaries);
+        
+        int progressRate = calculateProgressRate(enrollment, validSummaries, today);
+        
         String status = enrollment.getStatus();
         if (status == null || status.isBlank()) {
             status = "inactive";
         }
 
         Integer totalDays = enrollment.getChallenge().getDurationDays();
-        int completedDays = summaries.size();
+        int completedDays = validSummaries.size();
+        
+        // 남은 일수 = 총 일수 - 완료 일수
+        int remainingDays = Math.max(0, totalDays - completedDays);
 
         return new ChallengeProgressDetailResponse(true, new ChallengeProgressDetailResponse.Data(
                 enrollment.getChallenge().getId(),
@@ -173,7 +177,7 @@ public class ChallengeService {
                 enrollment.getStartedAt(),
                 enrollment.getEndedAt(),
                 enrollment.getFinishedAt(),
-                summaries.stream().map(this::toDailyIntake).toList()
+                validSummaries.stream().map(this::toDailyIntake).toList()
         ));
     }
 
@@ -227,19 +231,26 @@ public class ChallengeService {
 
     private ChallengeProgressResponse.InProgress toInProgress(UserChallenge enrollment) {
         LocalDate today = LocalDate.now();
-        int remainingDays = 0;
-        if (enrollment.getEndedAt() != null) {
-            remainingDays = (int) Math.max(0, ChronoUnit.DAYS.between(today, enrollment.getEndedAt()));
-        }
         List<DailyIntakeSummary> summaries = loadDailyIntakes(enrollment, today);
-        int progressRate = calculateProgressRate(enrollment, summaries, today);
+        
+        // 챌린지 조건을 만족하는 날짜만 필터링
+        List<DailyIntakeSummary> validSummaries = filterValidDays(enrollment.getChallenge(), summaries);
+        
+        int progressRate = calculateProgressRate(enrollment, validSummaries, today);
+        
+        Integer totalDays = enrollment.getChallenge().getDurationDays();
+        int completedDays = validSummaries.size();
+        
+        // 남은 일수 = 총 일수 - 완료 일수
+        int remainingDays = Math.max(0, totalDays != null ? totalDays - completedDays : 0);
+        
         return new ChallengeProgressResponse.InProgress(
                 enrollment.getChallenge().getId(),
                 enrollment.getChallenge().getTitle(),
                 enrollment.getChallenge().getType().name(),
                 progressRate,
                 remainingDays,
-                summaries.stream()
+                validSummaries.stream()
                         .map(this::toDailyIntake)
                         .toList()
         );
@@ -269,6 +280,109 @@ public class ChallengeService {
         }
         float completionRatio = (float) Math.min(summaries.size(), targetDays) / (float) durationDays;
         return Math.round(completionRatio * 100);
+    }
+
+    /**
+     * 챌린지 조건을 만족하는 날짜만 필터링
+     */
+    private List<DailyIntakeSummary> filterValidDays(Challenge challenge, List<DailyIntakeSummary> summaries) {
+        ChallengeType type = challenge.getType();
+        String title = challenge.getTitle();
+        
+        return summaries.stream()
+                .filter(summary -> {
+                    if (type == ChallengeType.kcal) {
+                        // 칼로리 챌린지: 제목에서 목표 칼로리 추출 (예: "7일 동안 1800kcal 이하 식단")
+                        Integer targetKcal = extractKcalFromTitle(title);
+                        if (targetKcal != null && summary.getTotalKcal() != null) {
+                            // Float를 Integer와 비교
+                            return summary.getTotalKcal().intValue() <= targetKcal;
+                        }
+                        // 목표 칼로리를 추출할 수 없거나 칼로리 데이터가 없으면 제외
+                        return false;
+                    } else if (type == ChallengeType.sodium) {
+                        // 나트륨 챌린지: 제목에서 목표 나트륨 추출 (예: "7일 동안 나트륨 2000mg 이하")
+                        Integer targetSodium = extractSodiumFromTitle(title);
+                        if (targetSodium != null && summary.getTotalSodiumMg() != null) {
+                            return summary.getTotalSodiumMg().intValue() <= targetSodium;
+                        }
+                        // 목표 나트륨을 추출할 수 없거나 나트륨 데이터가 없으면 제외
+                        return false;
+                    } else if (type == ChallengeType.protein) {
+                        // 단백질 챌린지: 제목에서 목표 단백질 추출 (예: "일주일 동안 단백질 60g 이상 섭취")
+                        Integer targetProtein = extractProteinFromTitle(title);
+                        if (targetProtein != null && summary.getTotalProteinG() != null) {
+                            return summary.getTotalProteinG().intValue() >= targetProtein;
+                        }
+                        // 목표 단백질을 추출할 수 없거나 단백질 데이터가 없으면 제외
+                        return false;
+                    } else if (type == ChallengeType.frequency) {
+                        // 빈도 챌린지: 기록이 있으면 성공
+                        return true;
+                    } else if (type == ChallengeType.day_color) {
+                        // 색깔 챌린지: 기록이 있으면 성공
+                        return true;
+                    }
+                    // 알 수 없는 타입이면 제외
+                    return false;
+                })
+                .toList();
+    }
+
+    /**
+     * 제목에서 칼로리 목표 추출 (예: "7일 동안 1800kcal 이하 식단" -> 1800)
+     */
+    private Integer extractKcalFromTitle(String title) {
+        if (title == null || title.isBlank()) return null;
+        // "1800kcal", "2000kcal" 등의 패턴 찾기 (대소문자 구분 없이)
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+)\\s*kcal", java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher matcher = pattern.matcher(title);
+        if (matcher.find()) {
+            try {
+                return Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 제목에서 나트륨 목표 추출 (예: "7일 동안 나트륨 2000mg 이하" -> 2000)
+     */
+    private Integer extractSodiumFromTitle(String title) {
+        if (title == null) return null;
+        // "나트륨 2000mg", "2000mg" 등의 패턴 찾기
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("나트륨\\s*(\\d+)mg|(\\d+)mg");
+        java.util.regex.Matcher matcher = pattern.matcher(title);
+        if (matcher.find()) {
+            try {
+                String value = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+                return Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 제목에서 단백질 목표 추출 (예: "일주일 동안 단백질 60g 이상 섭취" -> 60)
+     */
+    private Integer extractProteinFromTitle(String title) {
+        if (title == null) return null;
+        // "단백질 60g", "60g" 등의 패턴 찾기
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("단백질\\s*(\\d+)g|(\\d+)g");
+        java.util.regex.Matcher matcher = pattern.matcher(title);
+        if (matcher.find()) {
+            try {
+                String value = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+                return Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private ChallengeProgressResponse.DailyIntake toDailyIntake(DailyIntakeSummary summary) {
