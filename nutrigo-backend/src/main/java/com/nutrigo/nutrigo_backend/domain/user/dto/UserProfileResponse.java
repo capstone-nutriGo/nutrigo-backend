@@ -11,13 +11,17 @@ public record UserProfileResponse(
 ) {
     public static UserProfileResponse from(User user) {
         UserSetting prefs = user.getPreferences();
+        LocalDate birthday = user.getBirthday();
+        if (birthday != null && birthday.equals(User.SOCIAL_PLACEHOLDER_BIRTHDAY)) {
+            birthday = null;
+        }
         return new UserProfileResponse(true, new Data(
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
                 user.getName(),
                 user.getGender() != null ? user.getGender().name() : null,
-                user.getBirthday(),
+                birthday,
                 prefs != null ? prefs.getEveningCoach() : null,
                 prefs != null ? prefs.getChallengeReminder() : null
         ));

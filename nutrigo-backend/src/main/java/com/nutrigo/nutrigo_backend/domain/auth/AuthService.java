@@ -129,14 +129,13 @@ public class AuthService {
         LocalDateTime now = LocalDateTime.now();
         String safeNickname = nickname != null ? nickname : "소셜 유저";
         String safeName = safeNickname;
-        LocalDate defaultBirthday = LocalDate.of(1970, 1, 1);
         User user = User.builder()
                 .email(truncate(email, 100))
                 .password(UUID.randomUUID().toString()) // password는 UUID만 사용
                 .nickname(truncate(safeNickname, 50))
                 .name(truncate(safeName, 30))
                 .gender(Gender.other)
-                .birthday(defaultBirthday)
+                .birthday(User.SOCIAL_PLACEHOLDER_BIRTHDAY)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();

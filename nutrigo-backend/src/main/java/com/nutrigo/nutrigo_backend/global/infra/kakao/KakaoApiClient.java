@@ -8,6 +8,7 @@ import org.springframework.web.client.RestClient;
 public class KakaoApiClient {
 
     private static final String USER_ME_PATH = "/v2/user/me";
+    private static final String LOGOUT_PATH = "/v1/user/logout";
 
     private final RestClient restClient;
 
@@ -21,5 +22,13 @@ public class KakaoApiClient {
                 .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
                 .body(KakaoUserResponse.class);
+    }
+
+    public void logout(String accessToken) {
+        restClient.post()
+                .uri(LOGOUT_PATH)
+                .header("Authorization", "Bearer " + accessToken)
+                .retrieve()
+                .toBodilessEntity();
     }
 }
