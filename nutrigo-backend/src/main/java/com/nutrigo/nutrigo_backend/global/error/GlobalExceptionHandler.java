@@ -16,6 +16,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.RestClientResponseException;
+
 import java.util.Map;
 
 @Slf4j
@@ -155,11 +157,24 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(INTERNAL_SERVER_ERROR_CODE, "Internal server error"));
     }
 
+    @ExceptionHandler(RestClientResponseException.class)
+    public ResponseEntity<ApiResponse<String>> handleRestClientResponse(RestClientResponseException e) {
+        // FastAPI 쪽에서 내려준 상태 코드 / 바디를 그대로 로깅
+        log.error("[NutriGo-AI] Downstream FastAPI error: status={}, responseBody={}",
+                e.getStatusCode(), e.getResponseBodyAsString(), e);
+
+        // 클라이언트엔 502 정도로 감싸서 리턴 (원하는 대로 바꿔도 됨)
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ApiResponse.fail("NUTRIGO_AI_DOWNSTREAM_ERROR",
+                        "영양 분석 서버 호출 중 오류가 발생했습니다."));
+    }
+
     private FieldError extractFirstFieldError(BindingResult bindingResult) {
         return bindingResult.getFieldErrors().stream()
                 .findFirst()
                 .orElse(null);
     }
+
 
     private String formatFieldError(FieldError fieldError) {
         return fieldError.getField() + ": " + fieldError.getDefaultMessage();
