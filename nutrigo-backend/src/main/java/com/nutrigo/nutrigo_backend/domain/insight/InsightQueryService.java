@@ -5,6 +5,7 @@ import com.nutrigo.nutrigo_backend.domain.user.User;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Insight.InvalidReportRangeException;
 import com.nutrigo.nutrigo_backend.global.security.AuthenticatedUserProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.Comparator;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InsightQueryService {
@@ -28,9 +30,12 @@ public class InsightQueryService {
         User user = getCurrentUser();
         LocalDate weekStart = baseDate.with(DayOfWeek.MONDAY);
         LocalDate weekEnd = baseDate.with(DayOfWeek.SUNDAY);
+        log.info("[InsightQueryService] getWeeklySummary - userId: {}, baseDate: {}, weekStart: {}, weekEnd: {}", 
+                user.getId(), baseDate, weekStart, weekEnd);
 
         List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByUserAndDateBetween(user, weekStart, weekEnd);
         List<MealLog> mealLogs = mealLogRepository.findAllByDailyIntakeSummary_UserAndMealDateBetween(user, weekStart, weekEnd);
+        log.info("[InsightQueryService] getWeeklySummary - found {} summaries, {} mealLogs", summaries.size(), mealLogs.size());
 
         int totalMeals = mealLogs.size();
 
@@ -143,7 +148,11 @@ public class InsightQueryService {
 
     public InsightCalendarResponse getCalendar(LocalDate startDate, LocalDate endDate) {
         User user = getCurrentUser();
+        log.info("[InsightQueryService] getCalendar - userId: {}, startDate: {}, endDate: {}", 
+                user.getId(), startDate, endDate);
+        
         List<DailyIntakeSummary> summaries = dailyIntakeSummaryRepository.findAllByUserAndDateBetween(user, startDate, endDate);
+        log.info("[InsightQueryService] getCalendar - found {} summaries", summaries.size());
 
         List<InsightCalendarResponse.Day> days = summaries.stream()
                 .map(this::toCalendarDay)
@@ -155,14 +164,20 @@ public class InsightQueryService {
                 days
         );
 
+        log.info("[InsightQueryService] getCalendar - returning {} days", days.size());
         return new InsightCalendarResponse(true, data);
     }
 
     public DayMealsResponse getDayMeals(LocalDate date) {
         User user = getCurrentUser();
+        log.info("[InsightQueryService] getDayMeals - userId: {}, date: {}", user.getId(), date);
+        
         DailyIntakeSummary summary = dailyIntakeSummaryRepository.findByUserAndDate(user, date).orElse(null);
+        log.info("[InsightQueryService] getDayMeals - summary found: {}", summary != null);
 
         List<MealLog> mealLogs = mealLogRepository.findAllByDailyIntakeSummary_UserAndMealDate(user, date);
+        log.info("[InsightQueryService] getDayMeals - found {} mealLogs", mealLogs.size());
+        
         List<DayMealsResponse.Meal> meals = mealLogs.stream()
                 .map(mealLog -> new DayMealsResponse.Meal(
                         mealLog.getId(),
@@ -193,6 +208,7 @@ public class InsightQueryService {
                 meals
         );
 
+        log.info("[InsightQueryService] getDayMeals - returning {} meals", meals.size());
         return new DayMealsResponse(true, data);
     }
 

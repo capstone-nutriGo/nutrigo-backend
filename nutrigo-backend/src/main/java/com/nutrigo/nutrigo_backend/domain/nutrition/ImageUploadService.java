@@ -7,8 +7,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
@@ -25,10 +28,10 @@ public class ImageUploadService {
 
     private final S3Presigner presigner;
 
-    @Value("${aws.s3.bucket}")
+    @Value("${nutrigo.s3.bucket-name:nutrigo-images}")
     private String bucket;
 
-    @Value("${aws.s3.url-expiration-seconds:900}")
+    @Value("${nutrigo.s3.presigned-url-expiration:3600}")
     private long expirationSeconds;
 
     /**
@@ -80,6 +83,24 @@ public class ImageUploadService {
                 .build();
 
         return presigner.presignPutObject(presignRequest);
+    }
+
+    /**
+     * 조회용 presigned GET URL 생성
+     */
+    public String generatePresignedGetUrl(String key, long expirationSeconds) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .build();
+
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofSeconds(expirationSeconds))
+                .getObjectRequest(getObjectRequest)
+                .build();
+
+        PresignedGetObjectRequest presignedRequest = presigner.presignGetObject(presignRequest);
+        return presignedRequest.url().toString();
     }
 
     private String guessExtension(String contentType) {

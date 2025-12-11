@@ -4,6 +4,7 @@ import com.nutrigo.nutrigo_backend.domain.insight.DailyIntakeSummary;
 import com.nutrigo.nutrigo_backend.domain.insight.DailyIntakeSummaryRepository;
 import com.nutrigo.nutrigo_backend.domain.insight.MealLog;
 import com.nutrigo.nutrigo_backend.domain.insight.MealLogRepository;
+import com.nutrigo.nutrigo_backend.domain.insight.NutritionScoreService;
 import com.nutrigo.nutrigo_backend.domain.nutrition.dto.*;
 import com.nutrigo.nutrigo_backend.domain.user.User;
 import com.nutrigo.nutrigo_backend.global.security.AuthenticatedUserProvider;
@@ -28,6 +29,7 @@ public class NutritionService {
     private final MealLogRepository mealLogRepository;
     private final DailyIntakeSummaryRepository dailyIntakeSummaryRepository;
     private final AuthenticatedUserProvider authenticatedUserProvider;
+    private final NutritionScoreService nutritionScoreService;
 
     /**
      * 배달앱 가게 링크 기반 영양 분석
@@ -75,10 +77,13 @@ public class NutritionService {
      */
     @Transactional(readOnly = true)
     public NutritionAnalysisResponse analyzeFromCartImage(CartImageAnalysisRequest request) {
-        log.info("[NutritionService] cart-image 분석 시작: captureId={}, imageUrl={}",
-                request.getCaptureId(), request.getImageUrl());
+        log.info("[NutritionService] cart-image 분석 시작: captureId={}, s3Key={}, imageUrl={}",
+                request.getCaptureId(), request.getS3Key(), request.getImageUrl());
 
-        NutritionAnalysisResponse response = nutrigoAiClient.analyzeCartImage(request);
+        // S3 키가 있으면 presigned GET URL로 변환하여 imageUrl에 설정
+        CartImageAnalysisRequest processedRequest = processS3Key(request);
+
+        NutritionAnalysisResponse response = nutrigoAiClient.analyzeCartImage(processedRequest);
 
         log.info("[NutritionService] cart-image 분석 완료: analyses={}",
                 (response != null && response.getAnalyses() != null)
@@ -96,12 +101,15 @@ public class NutritionService {
      */
     @Transactional
     public OrderImageMealLogResponse analyzeFromOrderImage(OrderImageAnalysisRequest request) {
-        log.info("[NutritionService] order-image 분석 시작: captureId={}, imageUrl={}, orderDate={}, mealTime={}",
-                request.getCaptureId(), request.getImageUrl(),
+        log.info("[NutritionService] order-image 분석 시작: captureId={}, s3Key={}, imageUrl={}, orderDate={}, mealTime={}",
+                request.getCaptureId(), request.getS3Key(), request.getImageUrl(),
                 request.getOrderDate(), request.getMealTime());
 
+        // S3 키가 있으면 presigned GET URL로 변환하여 imageUrl에 설정
+        OrderImageAnalysisRequest processedRequest = processS3Key(request);
+
         // 1) NutriGo-AI 호출 (Python 서버로 order-image 요청)
-        OrderImageMealLogResponse response = nutrigoAiClient.analyzeOrderImage(request);
+        OrderImageMealLogResponse response = nutrigoAiClient.analyzeOrderImage(processedRequest);
 
         // 2) 섭취량 슬라이더용 기본 범위 세팅
         applyDefaultIntakeRanges(response);
@@ -112,8 +120,9 @@ public class NutritionService {
             response.setMealTime(request.getMealTime());
         }
 
-        // 4) MealLog 저장 (다건)
-        saveOrderImageMealLogs(response);
+        // 4) MealLog 저장은 프론트엔드에서 사용자가 "캘린더에 기록하기" 버튼을 눌렀을 때만 수행
+        // (사용자가 섭취량을 조절할 수 있도록 분석 결과만 반환)
+        // saveOrderImageMealLogs(response); // 주석 처리: 프론트엔드에서 저장하도록 변경
 
         log.info("[NutritionService] order-image 분석 완료: captureId={}, candidateCount={}",
                 response != null ? response.getCaptureId() : null,
@@ -200,6 +209,8 @@ public class NutritionService {
                     ? (existingScore * previousMeals + newAvgScore * scoredCount[0]) / (previousMeals + scoredCount[0])
                     : newAvgScore;
             summary.setDayScore(mergedScore);
+            // day_score 업데이트 후 day_color도 함께 업데이트
+            summary.setDayColor(nutritionScoreService.resolveDayColor(mergedScore));
         }
 
         Integer snacks = summary.getTotalSnack() != null ? summary.getTotalSnack() : 0;
@@ -246,6 +257,28 @@ public class NutritionService {
                 item.setIntakeDefaultRatio(1.0f);
             }
         }
+    }
+
+    private OrderImageAnalysisRequest processS3Key(OrderImageAnalysisRequest request) {
+        if (request.getS3Key() != null && !request.getS3Key().isBlank() 
+                && (request.getImageUrl() == null || request.getImageUrl().isBlank())) {
+            // S3 키를 presigned GET URL로 변환 (1시간 유효)
+            String presignedUrl = imageUploadService.generatePresignedGetUrl(request.getS3Key(), 3600);
+            request.setImageUrl(presignedUrl);
+            log.info("[NutritionService] S3 키를 presigned URL로 변환: s3Key={}", request.getS3Key());
+        }
+        return request;
+    }
+
+    private CartImageAnalysisRequest processS3Key(CartImageAnalysisRequest request) {
+        if (request.getS3Key() != null && !request.getS3Key().isBlank() 
+                && (request.getImageUrl() == null || request.getImageUrl().isBlank())) {
+            // S3 키를 presigned GET URL로 변환 (1시간 유효)
+            String presignedUrl = imageUploadService.generatePresignedGetUrl(request.getS3Key(), 3600);
+            request.setImageUrl(presignedUrl);
+            log.info("[NutritionService] S3 키를 presigned URL로 변환: s3Key={}", request.getS3Key());
+        }
+        return request;
     }
 
     private User getCurrentUser() {

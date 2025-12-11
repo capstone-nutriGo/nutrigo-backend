@@ -30,10 +30,25 @@ public class InsightLogService {
     public InsightLogResponse logInsight(InsightLogRequest request) {
         User user = getCurrentUser();
 
-        MealAnalysisResult analysisResult = mealAnalysisClient.analyze(request);
-        NutrientProfile nutrientProfile = Optional.ofNullable(analysisResult)
-                .map(MealAnalysisResult::nutrientProfile)
-                .orElse(null);
+        // 요청에 이미 영양소 정보가 있으면 우선 사용, 없으면 AI 분석 수행
+        NutrientProfile nutrientProfile = null;
+        MealAnalysisResult analysisResult = null;
+        
+        if (request.kcal() != null || request.sodiumMg() != null || request.proteinG() != null || request.carbG() != null) {
+            // 프론트엔드에서 이미 분석된 영양소 정보가 있으면 사용
+            nutrientProfile = new NutrientProfile(
+                    request.kcal(),
+                    request.sodiumMg(),
+                    request.proteinG(),
+                    request.carbG()
+            );
+        } else {
+            // 영양소 정보가 없으면 AI 분석 수행
+            analysisResult = mealAnalysisClient.analyze(request);
+            nutrientProfile = Optional.ofNullable(analysisResult)
+                    .map(MealAnalysisResult::nutrientProfile)
+                    .orElse(null);
+        }
 
         Float mealScore = nutritionScoreService.calculateMealScore(user, nutrientProfile);
         Float totalScore = analysisResult != null && analysisResult.totalScore() != null
@@ -42,9 +57,15 @@ public class InsightLogService {
 
         DailyIntakeSummary summary = upsertDailyIntakeSummary(user, request, nutrientProfile, mealScore);
 
+        // 카테고리는 요청에 있으면 우선 사용, 없으면 분석 결과에서 가져오기
+        String category = request.category();
+        if (category == null || category.isBlank()) {
+            category = analysisResult != null ? analysisResult.category() : null;
+        }
+
         MealLog mealLog = MealLog.builder()
                 .menu(analysisResult != null && analysisResult.menu() != null ? analysisResult.menu() : request.menu())
-                .category(analysisResult != null ? analysisResult.category() : null)
+                .category(category)
                 .kcal(nutrientProfile != null ? nutrientProfile.kcal() : null)
                 .sodiumMg(nutrientProfile != null ? nutrientProfile.sodiumMg() : null)
                 .proteinG(nutrientProfile != null ? nutrientProfile.proteinG() : null)
