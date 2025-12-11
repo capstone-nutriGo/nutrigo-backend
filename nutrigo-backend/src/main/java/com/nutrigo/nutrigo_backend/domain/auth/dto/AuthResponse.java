@@ -7,7 +7,7 @@ public record AuthResponse(
         boolean success,
         TokenData data
 ) {
-    public static AuthResponse from(String accessToken, String refreshToken, User user, UserSetting preferences) {
+    public static AuthResponse from(String accessToken, String refreshToken, User user, UserSetting preferences, long expiresInSeconds) {
         boolean profileComplete = user.getGender() != null
                 && user.getBirthday() != null
                 && !user.getBirthday().equals(User.SOCIAL_PLACEHOLDER_BIRTHDAY);
@@ -15,7 +15,7 @@ public record AuthResponse(
                 accessToken,
                 refreshToken,
                 "Bearer",
-                3600,
+                Math.toIntExact(expiresInSeconds),
                 new UserData(
                         user.getId(),
                         user.getEmail(),
