@@ -87,4 +87,16 @@ public class NutritionController {
         OrderImageMealLogResponse response = nutritionService.analyzeFromOrderImage(request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    /**
+     * POST /api/v1/nutrition/order-image/meal-logs
+     * order-image 분석 결과를 MealLog 에 일괄 저장
+     */
+    @PostMapping("/order-image/meal-logs")
+    public ResponseEntity<ApiResponse<Void>> saveOrderImageMealLogs(
+            @RequestBody @Valid OrderImageMealLogResponse request
+    ) {
+        nutritionService.saveOrderImageMealLogs(request);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }

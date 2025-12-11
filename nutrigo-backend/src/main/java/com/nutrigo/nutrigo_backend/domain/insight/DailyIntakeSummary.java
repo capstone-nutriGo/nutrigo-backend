@@ -45,7 +45,7 @@ public class DailyIntakeSummary {
     @Column(name = "day_score")
     private Float dayScore;
 
-    @Column(name = "day_color", columnDefinition = "ENUM('red','yellow','green')")
+    @Column(name = "day_color", nullable = false, columnDefinition = "ENUM('red','yellow','green') DEFAULT 'green'")
     private String dayColor;
 
     @Column(name = "created_at")
