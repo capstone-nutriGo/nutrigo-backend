@@ -27,7 +27,7 @@ management:
 
 jwt:
   secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION}
+  expiration: ${JWT_EXPIRATION:360000}
 
 server:
   port: ${SERVER_PORT:8080}
@@ -39,6 +39,6 @@ logging:
 
 kakao:
   oauth:
-    client-id: ${KAKAO_CLIENT_ID:}
-    client-secret: ${KAKAO_CLIENT_SECRET:}
+    client-id: ${KAKAO_CLIENT_ID}
+    client-secret: ${KAKAO_CLIENT_SECRET}
     redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}

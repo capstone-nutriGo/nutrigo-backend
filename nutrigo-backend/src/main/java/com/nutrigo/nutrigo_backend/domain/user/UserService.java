@@ -4,10 +4,14 @@ import com.nutrigo.nutrigo_backend.domain.user.dto.UserProfileResponse;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserProfileUpdateRequest;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserSettingsRequest;
 import com.nutrigo.nutrigo_backend.domain.user.dto.UserSettingsResponse;
+import com.nutrigo.nutrigo_backend.global.security.JwtTokenProvider;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.User.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -17,6 +21,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserSettingRepository userSettingRepository;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getProfile(String authorization) {
@@ -80,33 +85,25 @@ public class UserService {
     }
 
     public User getCurrentUser(String authorization) {
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new IllegalStateException("Authorization header is missing or invalid");
-        }
-
-        String token = authorization.substring(7); // "Bearer " 제거
-        Long userId = extractUserIdFromToken(token);
-
+        Long userId = resolveUserId(authorization);
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User not found with id: " + userId));
     }
 
-    private Long extractUserIdFromToken(String token) {
-        // 토큰 형식: "userId:uuid" (예: "1:a1b2c3d4-e5f6-7890-abcd-ef1234567890")
-        if (token.contains(":")) {
-            String userIdStr = token.split(":")[0];
-            try {
-                return Long.parseLong(userIdStr);
-            } catch (NumberFormatException e) {
-                throw new IllegalStateException("Invalid token format");
+    private Long resolveUserId(String authorization) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof Long principalId) {
+            return principalId;
+        }
+
+        if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer ")) {
+            String token = authorization.substring(7);
+            if (jwtTokenProvider.validateToken(token)) {
+                return jwtTokenProvider.getUserId(token);
             }
         }
-        // 기존 형식의 토큰인 경우 (UUID만 있는 경우) - 첫 번째 사용자 반환 (하위 호환성)
-        return userRepository.findAll()
-                .stream()
-                .findFirst()
-                .map(User::getId)
-                .orElseThrow(() -> new IllegalStateException("No users available"));
+
+        throw new IllegalStateException("Authorization header is missing or invalid");
     }
 
     private UserSetting ensurePreferences(User user) {

@@ -6,6 +6,7 @@ import com.nutrigo.nutrigo_backend.domain.auth.dto.LogoutRequest;
 import com.nutrigo.nutrigo_backend.domain.auth.dto.RefreshRequest;
 import com.nutrigo.nutrigo_backend.domain.auth.dto.RegisterRequest;
 import com.nutrigo.nutrigo_backend.domain.auth.dto.SocialLoginRequest;
+import com.nutrigo.nutrigo_backend.global.security.JwtTokenProvider;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Auth.DuplicateEmailException;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Auth.InvalidCredentialsException;
 import com.nutrigo.nutrigo_backend.global.error.AppExceptions.Auth.UserNotFoundException;
@@ -16,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -25,6 +25,7 @@ import java.util.UUID;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -37,10 +38,10 @@ public class AuthService {
         User user = createUserFromRegister(request);
 
         // 3) userId 기반 토큰 생성 (feature/user-api 방식 유지)
-        String accessToken = generateToken(user.getId());
-        String refreshToken = generateToken(user.getId());
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
-        return AuthResponse.from(accessToken, refreshToken, user, null);
+        return AuthResponse.from(accessToken, refreshToken, user, null, jwtTokenProvider.getExpirationSeconds());
     }
 
     @Transactional(readOnly = true)
@@ -56,10 +57,10 @@ public class AuthService {
         }
 
         // 3) userId 기반 토큰 생성 (access/refresh 둘 다)
-        String accessToken = generateToken(user.getId());
-        String refreshToken = generateToken(user.getId());
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
-        return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences());
+        return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences(), jwtTokenProvider.getExpirationSeconds());
     }
 
     public LogoutRequest.Response logout(String authorization, LogoutRequest request) {
@@ -70,26 +71,16 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse refresh(RefreshRequest request) {
         // refresh 토큰에서 사용자 ID 추출
-        Long userId = extractUserIdFromToken(request.refreshToken());
+        if (!jwtTokenProvider.validateToken(request.refreshToken())) {
+            throw new IllegalArgumentException("Invalid refresh token");
+        }
+        Long userId = jwtTokenProvider.getUserId(request.refreshToken());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
 
-        String accessToken = generateToken(userId);
-        String refreshToken = generateToken(userId);
-        return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences());
-    }
-
-    private Long extractUserIdFromToken(String token) {
-        // 토큰 형식: "userId:uuid" (예: "1:a1b2c3d4-e5f6-7890-abcd-ef1234567890")
-        if (token != null && token.contains(":")) {
-            String userIdStr = token.split(":")[0];
-            try {
-                return Long.parseLong(userIdStr);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Invalid token format");
-            }
-        }
-        throw new IllegalArgumentException("Invalid token format");
+        String accessToken = jwtTokenProvider.generateAccessToken(userId);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
+        return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences(), jwtTokenProvider.getExpirationSeconds());
     }
 
     @Transactional
@@ -105,9 +96,9 @@ public class AuthService {
 
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> createSocialUser(email, nickname));
-        String accessToken = generateToken(user.getId());
-        String refreshToken = generateToken(user.getId());
-        return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences());
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+        return AuthResponse.from(accessToken, refreshToken, user, user.getPreferences(), jwtTokenProvider.getExpirationSeconds());
     }
 
     private User createUserFromRegister(RegisterRequest request) {
@@ -147,15 +138,5 @@ public class AuthService {
             return null;
         }
         return value.length() <= maxLength ? value : value.substring(0, maxLength);
-    }
-
-    private String generateToken(Long userId) {
-        // 토큰 형식: userId:uuid (예: "1:a1b2c3d4-e5f6-7890-abcd-ef1234567890")
-        return userId + ":" + UUID.randomUUID().toString();
-    }
-
-    private String generateToken() {
-        // refresh용 (사용자 ID 없이)
-        return UUID.randomUUID().toString();
     }
 }
