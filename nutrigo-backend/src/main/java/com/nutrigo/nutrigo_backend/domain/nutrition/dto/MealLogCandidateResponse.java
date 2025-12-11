@@ -26,4 +26,13 @@ public class MealLogCandidateResponse {
 
     @JsonProperty("total_score")
     private Float totalScore;
+
+    @JsonProperty("intake_min_ratio")
+    private Float intakeMinRatio;
+
+    @JsonProperty("intake_max_ratio")
+    private Float intakeMaxRatio;
+
+    @JsonProperty("intake_default_ratio")
+    private Float intakeDefaultRatio;
 }

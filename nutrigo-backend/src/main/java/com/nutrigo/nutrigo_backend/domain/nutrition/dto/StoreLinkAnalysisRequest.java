@@ -19,6 +19,6 @@ public class StoreLinkAnalysisRequest {
 
     @Valid
     @NotNull
-    @JsonProperty("user_goal")
-    private UserGoalRequest userGoal;
+    @JsonProperty("user_info")
+    private UserInfoRequest userInfo;
 }
